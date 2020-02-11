@@ -2,8 +2,7 @@ package com.geekbrains.geek.cloud.server;
 
 import com.geekbrains.geek.cloud.common.ProtocolApp;
 
-import java.io.BufferedInputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 
@@ -12,16 +11,19 @@ public class Server {
 
     public Server() {
         try (ServerSocket serverSocket = new ServerSocket(8189)) {
-            System.out.println("Сервер запущен. Ожидаем подключение клиента");
-            try (Socket socket = serverSocket.accept();
-                 BufferedInputStream in = new BufferedInputStream(socket.getInputStream())) {
+            System.out.println("Сервер запущен");
+
+            try (Socket socket = serverSocket.accept()) {
                 System.out.println("Клиент подключился");
-                ProtocolApp protocolApp = new ProtocolApp(in.readAllBytes());
-                protocolApp.saveFile(REPOSITORY_NAME);
-                System.out.println("Файл принят");
+                DataInputStream in = new DataInputStream(socket.getInputStream());
+
+                ProtocolApp protocolApp = new ProtocolApp(REPOSITORY_NAME);
+                protocolApp.serverReceivePackage(in);
+                System.out.println("Файл принят \n" +"Сервер отключен");
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
+
     }
 }
