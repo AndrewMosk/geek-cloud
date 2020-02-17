@@ -16,8 +16,6 @@ import java.util.Arrays;
 import java.util.ResourceBundle;
 
 public class MainController implements Initializable {
-//    @FXML
-//    TextField tfFileName;
 
     @FXML
     ListView<String> filesListClient;
@@ -28,20 +26,31 @@ public class MainController implements Initializable {
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         Network.start();
+
         Thread t = new Thread(() -> {
             try {
                 while (true) {
                     AbstractMessage am = Network.readObject();
                     if (am instanceof FileMessage) {
+                        // прием файла с сервера
                         FileMessage fm = (FileMessage) am;
-                        Files.write(Paths.get("client_storage/" + fm.getFilename()), fm.getData(), StandardOpenOption.CREATE);
+                        Files.write(Paths.get("client_repository/" + fm.getFilename()), fm.getData(), StandardOpenOption.CREATE);
+                        System.out.println("File " + fm.getFilename() + " received from server");
                         refresh(null);
                     }
 
                     if (am instanceof ServiceMessage) {
+                        // прием сервисного сообщения от клиента
                         ServiceMessage sm = (ServiceMessage) am;
-                        String[] serverFilesList = parseServerFilesList(sm.getMessage());
-                        refresh(serverFilesList);
+                        if (sm.getType() == TypesServiceMessages.GET_FILES_LIST) {
+                            // пришел список серверных файлов
+                            String[] serverFilesList = parseServerFilesList(sm.getMessage());
+                            refresh(serverFilesList);
+                        } else if (sm.getType() == TypesServiceMessages.CLOSE_CONNECTION) {
+                            // клиент закрывается - сервер его об этом информирует
+                            System.out.println("Client disconnected from server");
+                            break;
+                        }
                     }
                 }
             } catch (ClassNotFoundException | IOException e) {
@@ -56,35 +65,25 @@ public class MainController implements Initializable {
     }
 
     private String[] parseServerFilesList(String message) {
-        // файлы приходять одной строкой, разделенные пробелом
+        // файлы приходят одной строкой, разделенные /
         return message.split("/");
     }
 
     public void refresh(String[] serverFilesList) {
         updateUI(() -> {
             try {
+                // обновление списка файлов клиента
                 filesListClient.getItems().clear();
                 Files.list(Paths.get("client_repository")).map(p -> p.getFileName().toString()).forEach(o -> filesListClient.getItems().add(o));
             } catch (IOException e) {
                 e.printStackTrace();
             }
 
-            // список файлов с сервера
-            //Network.sendMsg(new ServiceMessage(TypesServiceMessages.GET_FILES_LIST)); // для начала эту спискок своих файлов сервер сам будет отправлять клиенту при старте!!
-            // здесь просто обновление
+            // обновление списка файлов с сервера
             if (serverFilesList != null) {
                 filesListServer.getItems().clear();
                 Arrays.stream(serverFilesList).forEach(o -> filesListServer.getItems().add(o));
             }
-
-            // ЭТО НЕ ПРАВИЛЬНО! КЛИЕНТ ДОЛЖЕН ЗАПРАШИВАТЬ У СЕРВЕРА СПИСОК ФАЙЛОВ - К ПАПКЕ У НЕГО НИКАКОГО ДОСТУПА НЕТ!!!
-//            try {
-//                filesListServer.getItems().clear();
-//                Files.list(Paths.get("server_repository")).map(p -> p.getFileName().toString()).forEach(o -> filesListServer.getItems().add(o));
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
-
         });
     }
 
@@ -97,19 +96,19 @@ public class MainController implements Initializable {
     }
 
     public void pressOnUploadBtn(ActionEvent actionEvent) throws IOException {
-        // загрузка выделенного файла из клиентского хранилища на сервер
+        // отправка выделенного файла из клиентского хранилища на сервер
         String filename = filesListClient.getFocusModel().getFocusedItem();
         if (filename != null) {
-            System.out.println(filename);
             Network.sendMsg(new FileMessage(Paths.get("client_repository/" + filename)));
+            System.out.println("File " + filename + " sent to server");
         }
     }
 
     public void pressOnDownloadBtn(ActionEvent actionEvent) {
-
-//        if (tfFileName.getLength() > 0) {
-//            Network.sendMsg(new FileRequest(tfFileName.getText()));
-//            tfFileName.clear();
-//        }
+        // запрос файла с сервера
+        String filename = filesListServer.getFocusModel().getFocusedItem();
+        if (filename != null) {
+            Network.sendMsg(new FileRequest(filename));
+        }
     }
 }

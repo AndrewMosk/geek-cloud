@@ -15,6 +15,7 @@ public class Network {
     public static void start() {
         try {
             socket = new Socket("localhost", 8189);
+            System.out.println("Client connected to server");
             out = new ObjectEncoderOutputStream(socket.getOutputStream());
             in = new ObjectDecoderInputStream(socket.getInputStream(), 50 * 1024 * 1024);
         } catch (IOException e) {
@@ -40,14 +41,12 @@ public class Network {
         }
     }
 
-    public static boolean sendMsg(AbstractMessage msg) {
+    public static void sendMsg(AbstractMessage msg) {
         try {
             out.writeObject(msg);
-            return true;
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return false;
     }
 
     public static AbstractMessage readObject() throws ClassNotFoundException, IOException {
