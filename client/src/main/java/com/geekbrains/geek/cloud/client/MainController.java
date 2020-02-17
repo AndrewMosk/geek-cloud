@@ -12,6 +12,7 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.Arrays;
 import java.util.ResourceBundle;
 
 public class MainController implements Initializable {
@@ -56,7 +57,7 @@ public class MainController implements Initializable {
 
     private String[] parseServerFilesList(String message) {
         // файлы приходять одной строкой, разделенные пробелом
-        return message.split(" ");
+        return message.split("/");
     }
 
     public void refresh(String[] serverFilesList) {
@@ -73,9 +74,7 @@ public class MainController implements Initializable {
             // здесь просто обновление
             if (serverFilesList != null) {
                 filesListServer.getItems().clear();
-                for (String s : serverFilesList) {
-                    filesListServer.getItems().add(s);
-                }
+                Arrays.stream(serverFilesList).forEach(o -> filesListServer.getItems().add(o));
             }
 
             // ЭТО НЕ ПРАВИЛЬНО! КЛИЕНТ ДОЛЖЕН ЗАПРАШИВАТЬ У СЕРВЕРА СПИСОК ФАЙЛОВ - К ПАПКЕ У НЕГО НИКАКОГО ДОСТУПА НЕТ!!!
@@ -97,10 +96,17 @@ public class MainController implements Initializable {
         }
     }
 
-    public void pressOnUploadBtn(ActionEvent actionEvent) {
+    public void pressOnUploadBtn(ActionEvent actionEvent) throws IOException {
+        // загрузка выделенного файла из клиентского хранилища на сервер
+        String filename = filesListClient.getFocusModel().getFocusedItem();
+        if (filename != null) {
+            System.out.println(filename);
+            Network.sendMsg(new FileMessage(Paths.get("client_repository/" + filename)));
+        }
     }
 
     public void pressOnDownloadBtn(ActionEvent actionEvent) {
+
 //        if (tfFileName.getLength() > 0) {
 //            Network.sendMsg(new FileRequest(tfFileName.getText()));
 //            tfFileName.clear();
