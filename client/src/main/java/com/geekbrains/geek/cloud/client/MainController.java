@@ -3,9 +3,15 @@ package com.geekbrains.geek.cloud.client;
 import com.geekbrains.geek.cloud.common.*;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.scene.control.ContextMenu;
 import javafx.scene.control.ListView;
+import javafx.scene.control.MenuItem;
+import javafx.scene.control.SelectionMode;
+import javafx.scene.input.ContextMenuEvent;
+import javafx.scene.input.MouseEvent;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
@@ -21,16 +27,11 @@ import java.util.List;
 import java.util.ResourceBundle;
 
 public class MainController implements Initializable {
-
     final FileChooser fileChooser = new FileChooser();
     final DirectoryChooser directoryChooser = new DirectoryChooser();
 
-    public static ListView<String> getFilesListServer() {
-        return filesListServer;
-    }
-
     @FXML
-    static ListView<String> filesListServer;
+    ListView<String> filesListServer;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -69,6 +70,58 @@ public class MainController implements Initializable {
         });
         t.setDaemon(true);
         t.start();
+
+        createListViewSettings();
+    }
+
+    private void createListViewSettings() {
+        ContextMenu contextMenu = new ContextMenu();
+
+        MenuItem rename = new MenuItem("Rename");
+        rename.setOnAction(new EventHandler<ActionEvent>() {
+
+            @Override
+            public void handle(ActionEvent event) {
+                //label.setText("Select Menu Item 1");
+            }
+        });
+        MenuItem delete = new MenuItem("Delete");
+        delete.setOnAction(new EventHandler<ActionEvent>() {
+
+            @Override
+            public void handle(ActionEvent event) {
+                //label.setText("Select Menu Item 2");
+            }
+        });
+
+        contextMenu.getItems().addAll(rename, delete);
+        filesListServer.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+
+        filesListServer.setOnMouseClicked(new EventHandler<MouseEvent>() {
+            @Override
+            public void handle(MouseEvent event) {
+                if (contextMenu.isShowing()) {
+                    contextMenu.hide();
+                }
+
+                // сбрасываю выделение, при нажатии мышью на пустое место списка
+                if (event.getTarget().toString().contains("null")) {
+                    filesListServer.getSelectionModel().clearSelection();
+                }
+            }
+        });
+
+        filesListServer.setOnContextMenuRequested(new EventHandler<ContextMenuEvent>() {
+
+            @Override
+            public void handle(ContextMenuEvent event) {
+                if (filesListServer.getFocusModel().getFocusedItem() != null) {
+                    contextMenu.show(filesListServer, event.getScreenX(), event.getScreenY());
+                } else {
+                    contextMenu.hide();
+                }
+            }
+        });
     }
 
     private String[] parseServerFilesList(String message) {
@@ -97,25 +150,29 @@ public class MainController implements Initializable {
         Stage primaryStage = MainClient.getPrimaryStage();
         List<File> files = fileChooser.showOpenMultipleDialog(primaryStage);
 
-        files.stream().map(File::getAbsolutePath).forEach(f -> {
-            try {
-                Network.sendMsg(new FileMessage(Paths.get(f)));
-                System.out.println("File " + f + " sent to server");
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        });
+        if (files != null) {
+            files.stream().map(File::getAbsolutePath).forEach(f -> {
+                try {
+                    Network.sendMsg(new FileMessage(Paths.get(f)));
+                    System.out.println("File " + f + " sent to server");
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
+        }
     }
 
 
     public void pressOnDownloadBtn(ActionEvent actionEvent) {
         // запрос файла с сервера
-        String filename = filesListServer.getFocusModel().getFocusedItem();
-        if (filename != null) {
+        if (!filesListServer.getSelectionModel().getSelectedItems().isEmpty()) {
             Stage primaryStage = MainClient.getPrimaryStage();
             File directory = directoryChooser.showDialog(primaryStage);
 
-            Network.sendMsg(new FileRequest(filename, directory.getPath()));
+            if (directory != null) {
+                filesListServer.getSelectionModel().getSelectedItems().forEach(f -> Network.sendMsg(new FileRequest(f, directory.getPath())));
+            }
+
         }
     }
 }
