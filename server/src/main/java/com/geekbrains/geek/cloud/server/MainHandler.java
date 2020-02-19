@@ -1,9 +1,6 @@
 package com.geekbrains.geek.cloud.server;
 
-import com.geekbrains.geek.cloud.common.FileMessage;
-import com.geekbrains.geek.cloud.common.FileRequest;
-import com.geekbrains.geek.cloud.common.ServiceMessage;
-import com.geekbrains.geek.cloud.common.TypesServiceMessages;
+import com.geekbrains.geek.cloud.common.*;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.util.ReferenceCountUtil;
@@ -13,6 +10,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
 import java.util.stream.Stream;
 
 public class MainHandler extends ChannelInboundHandlerAdapter {
@@ -63,16 +62,23 @@ public class MainHandler extends ChannelInboundHandlerAdapter {
         }
     }
 
-    private String getFileList() throws IOException {
-        StringBuilder stb = new StringBuilder();
-
+    private ArrayList<ServerFile> getFileList() throws IOException {
         Stream<Path> pathStream = Files.list(Paths.get("server_repository"));
+        ArrayList<ServerFile> serverFiles = new ArrayList<>();
+
         if (pathStream.iterator().hasNext()) {
-            Files.list(Paths.get("server_repository")).map(p -> p.getFileName().toString()).forEach(o -> stb.append(o).append("/"));
-            stb.delete(stb.length() - 1, stb.length());
+            Files.list(Paths.get("server_repository")).forEach(file -> {
+                try {
+                    BasicFileAttributes attr = Files.readAttributes(file, BasicFileAttributes.class);
+                    serverFiles.add(new ServerFile(file.getFileName().toString(), attr.size(), attr.lastModifiedTime()));
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
         }
 
-        return stb.toString();
+        return serverFiles;
     }
 
     @Override

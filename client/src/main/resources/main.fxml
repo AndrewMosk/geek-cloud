@@ -8,7 +8,7 @@
       xmlns="http://javafx.com/javafx/10.0.2-internal" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.geekbrains.geek.cloud.client.MainController">
     <VBox alignment="TOP_CENTER">
-        <ListView fx:id="filesListServer" VBox.vgrow="ALWAYS"/>
+        <TableView fx:id="filesListServer" VBox.vgrow="ALWAYS"/>
         <HBox alignment="TOP_CENTER">
             <Button onAction="#pressOnUploadBtn" text="Загрузить"/>
             <Button onAction="#pressOnDownloadBtn" text="Скачать"/>
