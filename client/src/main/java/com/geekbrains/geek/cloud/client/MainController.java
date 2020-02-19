@@ -25,8 +25,12 @@ public class MainController implements Initializable {
     final FileChooser fileChooser = new FileChooser();
     final DirectoryChooser directoryChooser = new DirectoryChooser();
 
+    public static ListView<String> getFilesListServer() {
+        return filesListServer;
+    }
+
     @FXML
-    ListView<String> filesListServer;
+    static ListView<String> filesListServer;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
