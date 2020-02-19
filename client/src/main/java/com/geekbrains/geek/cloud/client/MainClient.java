@@ -11,8 +11,20 @@ import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
 
 public class MainClient extends Application {
+    private static Stage primaryStage;
+
+    private void setPrimaryStage(Stage stage) {
+        MainClient.primaryStage = stage;
+    }
+
+    static Stage getPrimaryStage() {
+        return MainClient.primaryStage;
+    }
+
     @Override
-    public void start(Stage primaryStage) throws Exception{
+    public void start(Stage primaryStage) throws Exception {
+        setPrimaryStage(primaryStage);
+
         FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("/main.fxml"));
         Parent root = fxmlLoader.load();
         primaryStage.setTitle("Box Client");

@@ -30,7 +30,7 @@ public class MainHandler extends ChannelInboundHandlerAdapter {
                 // отправка файла клиенту
                 FileRequest fr = (FileRequest) msg;
                 if (Files.exists(Paths.get("server_repository/" + fr.getFilename()))) {
-                    FileMessage fm = new FileMessage(Paths.get("server_repository/" + fr.getFilename()));
+                    FileMessage fm = new FileMessage(Paths.get("server_repository/" + fr.getFilename()), fr.getDestinationPath());
                     ctx.writeAndFlush(fm);
                     System.out.println("File " + fr.getFilename() + " sent to client");
                 }
@@ -66,7 +66,6 @@ public class MainHandler extends ChannelInboundHandlerAdapter {
     private String getFileList() throws IOException {
         StringBuilder stb = new StringBuilder();
 
-        // если папка пуста, бросает исключение
         Stream<Path> pathStream = Files.list(Paths.get("server_repository"));
         if (pathStream.iterator().hasNext()) {
             Files.list(Paths.get("server_repository")).map(p -> p.getFileName().toString()).forEach(o -> stb.append(o).append("/"));

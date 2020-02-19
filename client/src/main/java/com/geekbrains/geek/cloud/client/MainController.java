@@ -6,19 +6,24 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.ListView;
+import javafx.stage.DirectoryChooser;
+import javafx.stage.FileChooser;
+import javafx.stage.Stage;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
+import java.util.List;
 import java.util.ResourceBundle;
 
 public class MainController implements Initializable {
 
-    @FXML
-    ListView<String> filesListClient;
+    final FileChooser fileChooser = new FileChooser();
+    final DirectoryChooser directoryChooser = new DirectoryChooser();
 
     @FXML
     ListView<String> filesListServer;
@@ -34,9 +39,8 @@ public class MainController implements Initializable {
                     if (am instanceof FileMessage) {
                         // прием файла с сервера
                         FileMessage fm = (FileMessage) am;
-                        Files.write(Paths.get("client_repository/" + fm.getFilename()), fm.getData(), StandardOpenOption.CREATE);
+                        Files.write(Paths.get(fm.getDestinationPath() + "/" + fm.getFilename()), fm.getData(), StandardOpenOption.CREATE);
                         System.out.println("File " + fm.getFilename() + " received from server");
-                        refresh(null);
                     }
 
                     if (am instanceof ServiceMessage) {
@@ -61,7 +65,6 @@ public class MainController implements Initializable {
         });
         t.setDaemon(true);
         t.start();
-        refresh(null);
     }
 
     private String[] parseServerFilesList(String message) {
@@ -71,19 +74,10 @@ public class MainController implements Initializable {
 
     public void refresh(String[] serverFilesList) {
         updateUI(() -> {
-            try {
-                // обновление списка файлов клиента
-                filesListClient.getItems().clear();
-                Files.list(Paths.get("client_repository")).map(p -> p.getFileName().toString()).forEach(o -> filesListClient.getItems().add(o));
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
             // обновление списка файлов с сервера
-            if (serverFilesList != null) {
-                filesListServer.getItems().clear();
-                Arrays.stream(serverFilesList).forEach(o -> filesListServer.getItems().add(o));
-            }
+            filesListServer.getItems().clear();
+            Arrays.stream(serverFilesList).forEach(o -> filesListServer.getItems().add(o));
+
         });
     }
 
@@ -95,20 +89,29 @@ public class MainController implements Initializable {
         }
     }
 
-    public void pressOnUploadBtn(ActionEvent actionEvent) throws IOException {
-        // отправка выделенного файла из клиентского хранилища на сервер
-        String filename = filesListClient.getFocusModel().getFocusedItem();
-        if (filename != null) {
-            Network.sendMsg(new FileMessage(Paths.get("client_repository/" + filename)));
-            System.out.println("File " + filename + " sent to server");
-        }
+    public void pressOnUploadBtn(ActionEvent actionEvent) {
+        Stage primaryStage = MainClient.getPrimaryStage();
+        List<File> files = fileChooser.showOpenMultipleDialog(primaryStage);
+
+        files.stream().map(File::getAbsolutePath).forEach(f -> {
+            try {
+                Network.sendMsg(new FileMessage(Paths.get(f)));
+                System.out.println("File " + f + " sent to server");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
     }
+
 
     public void pressOnDownloadBtn(ActionEvent actionEvent) {
         // запрос файла с сервера
         String filename = filesListServer.getFocusModel().getFocusedItem();
         if (filename != null) {
-            Network.sendMsg(new FileRequest(filename));
+            Stage primaryStage = MainClient.getPrimaryStage();
+            File directory = directoryChooser.showDialog(primaryStage);
+
+            Network.sendMsg(new FileRequest(filename, directory.getPath()));
         }
     }
 }
