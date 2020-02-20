@@ -10,24 +10,16 @@
       fx:controller="com.geekbrains.geek.cloud.client.MainController">
     <VBox alignment="TOP_CENTER">
         <TableView fx:id="filesListServer" VBox.vgrow="ALWAYS">
+            <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/></columnResizePolicy>
             <columns>
                 <TableColumn text="Name">
-<!--                    prefWidth="75.0"-->
-                    <cellValueFactory>
-                        <PropertyValueFactory property="name"/>
-                    </cellValueFactory>
+                    <cellValueFactory><PropertyValueFactory property="name"/></cellValueFactory>
                 </TableColumn>
                 <TableColumn text="File size">
-<!--                    prefWidth="75.0"-->
-                    <cellValueFactory>
-                        <PropertyValueFactory property="size"/>
-                    </cellValueFactory>
+                    <cellValueFactory><PropertyValueFactory property="size"/></cellValueFactory>
                 </TableColumn>
                 <TableColumn text="Date">
-<!--                    prefWidth="75.0"-->
-                    <cellValueFactory>
-                        <PropertyValueFactory property="date"/>
-                    </cellValueFactory>
+                    <cellValueFactory><PropertyValueFactory property="date"/></cellValueFactory>
                 </TableColumn>
             </columns>
         </TableView>

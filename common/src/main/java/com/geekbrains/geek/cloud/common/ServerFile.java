@@ -5,6 +5,18 @@ public class ServerFile {
     private String size;
     private String date;
 
+    public String getName() {
+        return name;
+    }
+
+    public String getSize() {
+        return size;
+    }
+
+    public String getDate() {
+        return date;
+    }
+
     public ServerFile(String data) {
         String[] tokens = data.split("/", 3);
         this.name = tokens[0];
