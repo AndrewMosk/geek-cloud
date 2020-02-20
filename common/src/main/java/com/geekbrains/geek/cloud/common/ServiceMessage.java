@@ -2,9 +2,9 @@ package com.geekbrains.geek.cloud.common;
 
 public class ServiceMessage extends AbstractMessage{
     private TypesServiceMessages type;
-    private Object[] message;
+    private Object message;
 
-    public ServiceMessage(TypesServiceMessages type, Object[] message) {
+    public ServiceMessage(TypesServiceMessages type, Object message) {
         this.type = type;
         this.message = message;
     }

@@ -15,7 +15,7 @@
                 <TableColumn text="Name">
                     <cellValueFactory><PropertyValueFactory property="name"/></cellValueFactory>
                 </TableColumn>
-                <TableColumn text="File size">
+                <TableColumn text="File size, kb">
                     <cellValueFactory><PropertyValueFactory property="size"/></cellValueFactory>
                 </TableColumn>
                 <TableColumn text="Date">

@@ -67,14 +67,15 @@ public class MainController implements Initializable {
         t.setDaemon(true);
         t.start();
 
-        createListViewSettings();
+        createTableViewSettings();
     }
 
     private List<ServerFile> getArrayList(String[] message) {
         return Arrays.stream(message).map(ServerFile::new).collect(Collectors.toList());
     }
 
-    private void createListViewSettings() {
+    private void createTableViewSettings() {
+        // создание контекстного меню
         ContextMenu contextMenu = new ContextMenu();
 
         MenuItem rename = new MenuItem("Rename");
@@ -82,7 +83,11 @@ public class MainController implements Initializable {
 
             @Override
             public void handle(ActionEvent event) {
-                //label.setText("Select Menu Item 1");
+                // создаю здесь, чтоб задать дефолтное значение
+                TextInputDialog dialog = createDialogWindow(filesListServer.getFocusModel().getFocusedItem().getName());
+                // открываю диалоговое окно
+                Optional<String> result = dialog.showAndWait();
+                result.ifPresent(name -> Network.sendMsg(new ServiceMessage(TypesServiceMessages.RENAME_FILE, filesListServer.getFocusModel().getFocusedItem().getName() + " " + name)));
             }
         });
         MenuItem delete = new MenuItem("Delete");
@@ -90,7 +95,15 @@ public class MainController implements Initializable {
 
             @Override
             public void handle(ActionEvent event) {
-                //label.setText("Select Menu Item 2");
+                Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+                alert.setTitle("Delete File");
+                alert.setHeaderText("Are you sure want to delete this file? Once deleted, it cannot be restored.");
+                alert.setContentText(filesListServer.getFocusModel().getFocusedItem().getName());
+
+                Optional<ButtonType> option = alert.showAndWait();
+                if (option.get() == ButtonType.OK) {
+                    Network.sendMsg(new ServiceMessage(TypesServiceMessages.DELETE_FILE, filesListServer.getFocusModel().getFocusedItem().getName()));
+                }
             }
         });
 
@@ -105,7 +118,7 @@ public class MainController implements Initializable {
                 }
 
                 // сбрасываю выделение, при нажатии мышью на пустое место списка
-                if (event.getTarget().toString().contains("null")) {
+                if (event.getTarget().toString().contains("'null'")) {
                     filesListServer.getSelectionModel().clearSelection();
                 }
             }
@@ -122,6 +135,16 @@ public class MainController implements Initializable {
                 }
             }
         });
+    }
+
+    private TextInputDialog createDialogWindow(String defaultValue) {
+        // создание диалогового окна с запросом нового имени
+        TextInputDialog dialog = new TextInputDialog(defaultValue);
+        dialog.setTitle("Rename file");
+        dialog.setHeaderText("Enter new filename:");
+        dialog.setContentText("Name:");
+
+        return dialog;
     }
 
     public void refresh(List<ServerFile> serverFilesList) {
@@ -164,9 +187,8 @@ public class MainController implements Initializable {
             File directory = directoryChooser.showDialog(primaryStage);
 
             if (directory != null) {
-                //filesListServer.getSelectionModel().getSelectedItems().forEach(f -> Network.sendMsg(new FileRequest(f, directory.getPath())));
+                filesListServer.getSelectionModel().getSelectedItems().forEach(f -> Network.sendMsg(new FileRequest(f.getName(), directory.getPath())));
             }
-
         }
     }
 }

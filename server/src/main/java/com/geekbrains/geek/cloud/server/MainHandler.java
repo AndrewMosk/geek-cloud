@@ -5,6 +5,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.util.ReferenceCountUtil;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -55,6 +56,23 @@ public class MainHandler extends ChannelInboundHandlerAdapter {
                     // закрываю контекст
                     ctx.close().sync();
                     System.out.println("Client disconnected");
+                } else if (sm.getType() == TypesServiceMessages.RENAME_FILE) {
+                    String message = (String) sm.getMessage();
+
+                    // имена приходят в строке через пробел. первое - имя файла, который нужно переименовать, второе - новое имя
+                    File file = Paths.get("server_repository/" + message.split(" ", 2)[0]).toFile();
+                    boolean success = file.renameTo(Paths.get("server_repository/" + message.split(" ", 2)[1]).toFile());
+
+                    if (success) {
+                        ctx.writeAndFlush(new ServiceMessage(TypesServiceMessages.GET_FILES_LIST, getFileList()));
+                    }
+                } else if (sm.getType() == TypesServiceMessages.DELETE_FILE) {
+                    String message = (String) sm.getMessage();
+                    boolean success = Paths.get("server_repository/" + message).toFile().delete();
+
+                    if (success) {
+                        ctx.writeAndFlush(new ServiceMessage(TypesServiceMessages.GET_FILES_LIST, getFileList()));
+                    }
                 }
             }
         } finally {
@@ -77,7 +95,7 @@ public class MainHandler extends ChannelInboundHandlerAdapter {
                 }
             });
         }
-        
+
         return serverFiles.toArray(new String[0]);
     }
 
