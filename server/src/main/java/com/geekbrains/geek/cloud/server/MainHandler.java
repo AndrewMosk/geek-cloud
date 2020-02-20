@@ -50,7 +50,7 @@ public class MainHandler extends ChannelInboundHandlerAdapter {
                 if (sm.getType() == TypesServiceMessages.CLOSE_CONNECTION) {
                     // клиент закрыл соединение
                     // посылаю команду клиенту на закрытие
-                    ctx.writeAndFlush(new ServiceMessage(TypesServiceMessages.CLOSE_CONNECTION, ""));
+                    ctx.writeAndFlush(new ServiceMessage(TypesServiceMessages.CLOSE_CONNECTION, null));
                     Thread.sleep(1000);
                     // закрываю контекст
                     ctx.close().sync();
@@ -62,23 +62,23 @@ public class MainHandler extends ChannelInboundHandlerAdapter {
         }
     }
 
-    private ArrayList<ServerFile> getFileList() throws IOException {
+    private String[] getFileList() throws IOException {
         Stream<Path> pathStream = Files.list(Paths.get("server_repository"));
-        ArrayList<ServerFile> serverFiles = new ArrayList<>();
+        ArrayList<String> serverFiles = new ArrayList<>();
 
         if (pathStream.iterator().hasNext()) {
             Files.list(Paths.get("server_repository")).forEach(file -> {
                 try {
                     BasicFileAttributes attr = Files.readAttributes(file, BasicFileAttributes.class);
-                    serverFiles.add(new ServerFile(file.getFileName().toString(), attr.size(), attr.lastModifiedTime()));
+                    serverFiles.add( file.getFileName().toString() + "/" + attr.size() + "/" + attr.lastModifiedTime());
 
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             });
         }
-
-        return serverFiles;
+        
+        return serverFiles.toArray(new String[0]);
     }
 
     @Override

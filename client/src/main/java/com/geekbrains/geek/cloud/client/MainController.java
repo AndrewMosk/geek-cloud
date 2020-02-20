@@ -2,11 +2,14 @@ package com.geekbrains.geek.cloud.client;
 
 import com.geekbrains.geek.cloud.common.*;
 import javafx.application.Platform;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
+import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.input.ContextMenuEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.stage.DirectoryChooser;
@@ -19,10 +22,8 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-import java.util.ResourceBundle;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class MainController implements Initializable {
     final FileChooser fileChooser = new FileChooser();
@@ -51,8 +52,7 @@ public class MainController implements Initializable {
                         ServiceMessage sm = (ServiceMessage) am;
                         if (sm.getType() == TypesServiceMessages.GET_FILES_LIST) {
                             // пришел список серверных файлов
-                            String[] serverFilesList = parseServerFilesList(sm.getMessage());
-                            refresh(serverFilesList);
+                            refresh(getArrayList((String[]) sm.getMessage()));
                         } else if (sm.getType() == TypesServiceMessages.CLOSE_CONNECTION) {
                             // клиент закрывается - сервер его об этом информирует
                             System.out.println("Client disconnected from server");
@@ -70,6 +70,10 @@ public class MainController implements Initializable {
         t.start();
 
         createListViewSettings();
+    }
+
+    private List<ServerFile> getArrayList(String[] message) {
+        return Arrays.stream(message).map(ServerFile::new).collect(Collectors.toList());
     }
 
     private void createListViewSettings() {
@@ -122,17 +126,11 @@ public class MainController implements Initializable {
         });
     }
 
-    private String[] parseServerFilesList(String message) {
-        // файлы приходят одной строкой, разделенные /
-        return message.split("/");
-    }
-
-    public void refresh(String[] serverFilesList) {
+    public void refresh(List<ServerFile> serverFilesList) {
         updateUI(() -> {
             // обновление списка файлов с сервера
             filesListServer.getItems().clear();
-            Arrays.stream(serverFilesList).forEach(o -> filesListServer.getItems().add(o));
-
+            filesListServer.setItems(FXCollections.observableArrayList(serverFilesList));
         });
     }
 
@@ -168,7 +166,7 @@ public class MainController implements Initializable {
             File directory = directoryChooser.showDialog(primaryStage);
 
             if (directory != null) {
-                filesListServer.getSelectionModel().getSelectedItems().forEach(f -> Network.sendMsg(new FileRequest(f, directory.getPath())));
+                //filesListServer.getSelectionModel().getSelectedItems().forEach(f -> Network.sendMsg(new FileRequest(f, directory.getPath())));
             }
 
         }

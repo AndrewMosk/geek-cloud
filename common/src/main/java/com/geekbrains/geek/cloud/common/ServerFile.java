@@ -1,29 +1,14 @@
 package com.geekbrains.geek.cloud.common;
 
-import java.nio.file.attribute.FileTime;
-import java.util.Date;
-
 public class ServerFile {
     private String name;
-    private long size;
-    private FileTime date;
+    private String size;
+    private String date;
 
-    public String getName() {
-        return name;
+    public ServerFile(String data) {
+        String[] tokens = data.split("/", 3);
+        this.name = tokens[0];
+        this.size = tokens[1];
+        this.date = tokens[2];
     }
-
-    public long getSize() {
-        return size;
-    }
-
-    public FileTime getDate() {
-        return date;
-    }
-
-    public ServerFile(String name, long size, FileTime date) {
-        this.name = name;
-        this.size = size;
-        this.date = date;
-    }
-
 }

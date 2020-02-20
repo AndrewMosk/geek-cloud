@@ -2,9 +2,9 @@ package com.geekbrains.geek.cloud.common;
 
 public class ServiceMessage extends AbstractMessage{
     private TypesServiceMessages type;
-    private String message;
+    private Object[] message;
 
-    public ServiceMessage(TypesServiceMessages type, String message) {
+    public ServiceMessage(TypesServiceMessages type, Object[] message) {
         this.type = type;
         this.message = message;
     }
@@ -13,7 +13,7 @@ public class ServiceMessage extends AbstractMessage{
         return type;
     }
 
-    public String getMessage() {
+    public Object getMessage() {
         return message;
     }
 }

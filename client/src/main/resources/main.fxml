@@ -3,12 +3,34 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
+<?import javafx.scene.control.cell.PropertyValueFactory?>
 <VBox fx:id="rootNode" alignment="CENTER" prefHeight="400.0" prefWidth="400.0"
       style="-fx-background-color: linear-gradient(#fff 0%, #eee 10%, #ddd 90%, #bbb 100%);"
       xmlns="http://javafx.com/javafx/10.0.2-internal" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.geekbrains.geek.cloud.client.MainController">
     <VBox alignment="TOP_CENTER">
-        <TableView fx:id="filesListServer" VBox.vgrow="ALWAYS"/>
+        <TableView fx:id="filesListServer" VBox.vgrow="ALWAYS">
+            <columns>
+                <TableColumn text="Name">
+<!--                    prefWidth="75.0"-->
+                    <cellValueFactory>
+                        <PropertyValueFactory property="name"/>
+                    </cellValueFactory>
+                </TableColumn>
+                <TableColumn text="File size">
+<!--                    prefWidth="75.0"-->
+                    <cellValueFactory>
+                        <PropertyValueFactory property="size"/>
+                    </cellValueFactory>
+                </TableColumn>
+                <TableColumn text="Date">
+<!--                    prefWidth="75.0"-->
+                    <cellValueFactory>
+                        <PropertyValueFactory property="date"/>
+                    </cellValueFactory>
+                </TableColumn>
+            </columns>
+        </TableView>
         <HBox alignment="TOP_CENTER">
             <Button onAction="#pressOnUploadBtn" text="Загрузить"/>
             <Button onAction="#pressOnDownloadBtn" text="Скачать"/>

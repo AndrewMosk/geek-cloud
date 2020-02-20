@@ -35,7 +35,7 @@ public class MainClient extends Application {
         primaryStage.setOnCloseRequest(new EventHandler<WindowEvent>() {
             @Override
             public void handle(WindowEvent event) {
-                Network.sendMsg(new ServiceMessage(TypesServiceMessages.CLOSE_CONNECTION, ""));
+                Network.sendMsg(new ServiceMessage(TypesServiceMessages.CLOSE_CONNECTION, null));
             }
         });
     }
