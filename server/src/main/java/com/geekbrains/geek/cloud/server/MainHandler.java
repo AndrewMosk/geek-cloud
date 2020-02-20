@@ -13,6 +13,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.stream.Stream;
 
 public class MainHandler extends ChannelInboundHandlerAdapter {
@@ -68,11 +69,11 @@ public class MainHandler extends ChannelInboundHandlerAdapter {
                     }
                 } else if (sm.getType() == TypesServiceMessages.DELETE_FILE) {
                     String message = (String) sm.getMessage();
-                    boolean success = Paths.get("server_repository/" + message).toFile().delete();
-
-                    if (success) {
-                        ctx.writeAndFlush(new ServiceMessage(TypesServiceMessages.GET_FILES_LIST, getFileList()));
-                    }
+                    // файлы на удаление в строке через пробел
+                    String[] files = message.split(" ");
+                    Arrays.stream(files).forEach(f -> Paths.get("server_repository/" + f).toFile().delete());
+                    // новый список файлов
+                    ctx.writeAndFlush(new ServiceMessage(TypesServiceMessages.GET_FILES_LIST, getFileList()));
                 }
             }
         } finally {

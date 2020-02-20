@@ -46,7 +46,7 @@ public class MainController implements Initializable {
                     }
 
                     if (am instanceof ServiceMessage) {
-                        // прием сервисного сообщения от клиента
+                        // прием сервисного сообщения от сервера
                         ServiceMessage sm = (ServiceMessage) am;
                         if (sm.getType() == TypesServiceMessages.GET_FILES_LIST) {
                             // пришел список серверных файлов
@@ -83,11 +83,18 @@ public class MainController implements Initializable {
 
             @Override
             public void handle(ActionEvent event) {
-                // создаю здесь, чтоб задать дефолтное значение
-                TextInputDialog dialog = createDialogWindow(filesListServer.getFocusModel().getFocusedItem().getName());
-                // открываю диалоговое окно
-                Optional<String> result = dialog.showAndWait();
-                result.ifPresent(name -> Network.sendMsg(new ServiceMessage(TypesServiceMessages.RENAME_FILE, filesListServer.getFocusModel().getFocusedItem().getName() + " " + name)));
+                // переимновывать разрешаю файлы только по одному :-)
+                if (filesListServer.getSelectionModel().getSelectedItems().size() == 1) {
+                    // создаю здесь, чтоб задать дефолтное значение
+                    TextInputDialog dialog = createDialogWindow(filesListServer.getFocusModel().getFocusedItem().getName());
+                    // открываю диалоговое окно
+                    Optional<String> result = dialog.showAndWait();
+                    result.ifPresent(name -> Network.sendMsg(new ServiceMessage(TypesServiceMessages.RENAME_FILE, filesListServer.getFocusModel().getFocusedItem().getName() + " " + name)));
+                } else {
+                    if (contextMenu.isShowing()) {
+                        contextMenu.hide();
+                    }
+                }
             }
         });
         MenuItem delete = new MenuItem("Delete");
@@ -97,33 +104,37 @@ public class MainController implements Initializable {
             public void handle(ActionEvent event) {
                 Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
                 alert.setTitle("Delete File");
-                alert.setHeaderText("Are you sure want to delete this file? Once deleted, it cannot be restored.");
-                alert.setContentText(filesListServer.getFocusModel().getFocusedItem().getName());
+                alert.setHeaderText("Are you sure want to delete file(s)? Once deleted, it cannot be restored.");
 
                 Optional<ButtonType> option = alert.showAndWait();
                 if (option.get() == ButtonType.OK) {
-                    Network.sendMsg(new ServiceMessage(TypesServiceMessages.DELETE_FILE, filesListServer.getFocusModel().getFocusedItem().getName()));
+                    // если пользователь подтверждает удаление файла(ов) - отправляю запрос на удаление
+                    StringBuilder files = new StringBuilder();
+                    filesListServer.getSelectionModel().getSelectedItems().forEach(f -> files.append(f.getName()).append(" "));
+                    files.delete(files.length() - 1, files.length());
+                    Network.sendMsg(new ServiceMessage(TypesServiceMessages.DELETE_FILE, files.toString()));
                 }
             }
         });
 
         contextMenu.getItems().addAll(rename, delete);
+        // разрешаю множественный выбор
         filesListServer.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 
+        // задаю несколько действий на левый клик - скрываю контекстное меню и снимаю выделение, если клинули на пустое место
         filesListServer.setOnMouseClicked(new EventHandler<MouseEvent>() {
             @Override
             public void handle(MouseEvent event) {
                 if (contextMenu.isShowing()) {
                     contextMenu.hide();
                 }
-
                 // сбрасываю выделение, при нажатии мышью на пустое место списка
                 if (event.getTarget().toString().contains("'null'")) {
                     filesListServer.getSelectionModel().clearSelection();
                 }
             }
         });
-
+        // вызов контекстного меню
         filesListServer.setOnContextMenuRequested(new EventHandler<ContextMenuEvent>() {
 
             @Override
@@ -164,7 +175,9 @@ public class MainController implements Initializable {
     }
 
     public void pressOnUploadBtn(ActionEvent actionEvent) {
+        // получаю ссылку на основную форму
         Stage primaryStage = MainClient.getPrimaryStage();
+        // открываю диалог выбора файлов
         List<File> files = fileChooser.showOpenMultipleDialog(primaryStage);
 
         if (files != null) {
@@ -179,11 +192,21 @@ public class MainController implements Initializable {
         }
     }
 
+    private void showInformationWindow (String text) {
+        // пока не стал прикручивать
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Information message");
+        alert.setHeaderText("Message:");
+        alert.setContentText(text);
+
+        alert.showAndWait();
+    }
 
     public void pressOnDownloadBtn(ActionEvent actionEvent) {
         // запрос файла с сервера
         if (!filesListServer.getSelectionModel().getSelectedItems().isEmpty()) {
             Stage primaryStage = MainClient.getPrimaryStage();
+            // запрашиваю путь - куда скачать файлы
             File directory = directoryChooser.showDialog(primaryStage);
 
             if (directory != null) {
