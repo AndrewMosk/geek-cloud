@@ -21,7 +21,7 @@ public class MainHandler extends ChannelInboundHandlerAdapter {
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
         System.out.println("Client connected");
         // отправляю клиенту список файлов
-        ctx.writeAndFlush(new ServiceMessage(TypesServiceMessages.GET_FILES_LIST, getFileList()));
+        //ctx.writeAndFlush(new ServiceMessage(TypesServiceMessages.GET_FILES_LIST, getFileList()));
     }
 
     @Override
@@ -73,6 +73,8 @@ public class MainHandler extends ChannelInboundHandlerAdapter {
                     String[] files = message.split(" ");
                     Arrays.stream(files).forEach(f -> Paths.get("server_repository/" + f).toFile().delete());
                     // новый список файлов
+                    ctx.writeAndFlush(new ServiceMessage(TypesServiceMessages.GET_FILES_LIST, getFileList()));
+                } else if (sm.getType() == TypesServiceMessages.GET_FILES_LIST) {
                     ctx.writeAndFlush(new ServiceMessage(TypesServiceMessages.GET_FILES_LIST, getFileList()));
                 }
             }

@@ -11,13 +11,26 @@ class DataBase {
     static void connect(){
         try {
             Class.forName("org.sqlite.JDBC");
-            connection = DriverManager.getConnection("jdbc:sqlite:users.db");
+            connection = DriverManager.getConnection("jdbc:sqlite:server/users.db");
             stmt = connection.createStatement();
         } catch (ClassNotFoundException|SQLException e) {
             e.printStackTrace();
         }
     }
 
+    static boolean authentification(String authString) throws SQLException {
+        boolean authOk;
+        connect();
+
+        String[] authArr = authString.split(" ", 2);
+
+
+        int hash = Integer.parseInt(authArr[1]);
+        authOk = tryToAuth(authArr[0], hash);
+
+        disconnect();
+        return authOk;
+    }
 
 
     static void disconnect(){
@@ -28,4 +41,9 @@ class DataBase {
         }
     }
 
+    private static boolean tryToAuth(String login, int hash) throws SQLException {
+        ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM Users WHERE login = '%s' AND passwordHash = '%s'", login, hash));
+
+        return rs.next();
+    }
 }

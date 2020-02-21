@@ -10,6 +10,7 @@ import javafx.fxml.Initializable;
 import javafx.scene.control.*;
 import javafx.scene.input.ContextMenuEvent;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
@@ -29,6 +30,15 @@ public class MainController implements Initializable {
 
     @FXML
     TableView<ServerFile> filesListServer;
+
+    @FXML
+    TextField loginField;
+
+    @FXML
+    PasswordField passwordField;
+
+    @FXML
+    VBox VBoxUpperPanel;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -50,11 +60,19 @@ public class MainController implements Initializable {
                         ServiceMessage sm = (ServiceMessage) am;
                         if (sm.getType() == TypesServiceMessages.GET_FILES_LIST) {
                             // пришел список серверных файлов
+                            // если он пришел первый раз (после успешной аутентификации), то скрываю область ввхода
+                            if (VBoxUpperPanel.isVisible()) {
+                                VBoxUpperPanel.setVisible(false);
+                            }
+
                             refresh(getArrayList((String[]) sm.getMessage()));
                         } else if (sm.getType() == TypesServiceMessages.CLOSE_CONNECTION) {
                             // клиент закрывается - сервер его об этом информирует
                             System.out.println("Client disconnected from server");
                             break;
+                        } else if (sm.getType() == TypesServiceMessages.AUTH) {
+                            // если пришел такой ответ, значит аутентификация не удалась, уведомляю об этом пользователя
+                            showInformationWindow("Аутентификация не удалась, попробуйте еще раз.");
                         }
                     }
                 }
@@ -193,13 +211,14 @@ public class MainController implements Initializable {
     }
 
     private void showInformationWindow (String text) {
-        // пока не стал прикручивать
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Information message");
-        alert.setHeaderText("Message:");
-        alert.setContentText(text);
+        updateUI(() -> {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Information message");
+            alert.setHeaderText("Message:");
+            alert.setContentText(text);
 
-        alert.showAndWait();
+            alert.showAndWait();
+        });
     }
 
     public void pressOnDownloadBtn(ActionEvent actionEvent) {
@@ -216,5 +235,6 @@ public class MainController implements Initializable {
     }
 
     public void tryToAuth(ActionEvent actionEvent) {
+        Network.sendMsg(new ServiceMessage(TypesServiceMessages.AUTH, loginField.getText() + " " + passwordField.getText().hashCode()));
     }
 }

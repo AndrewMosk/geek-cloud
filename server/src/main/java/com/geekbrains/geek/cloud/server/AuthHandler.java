@@ -11,32 +11,26 @@ class AuthHandler extends ChannelInboundHandlerAdapter {
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         if (authOk) {
+            // ретранслирую в MainHandler
             ctx.fireChannelRead(msg);
             return;
         }
 
-        String input = (String) msg;
-        // /auth user1
+        // на утентификацию приходит строка логин и хэш пароля через пробел
         if (msg instanceof ServiceMessage) {
             ServiceMessage sm = (ServiceMessage) msg;
             if (sm.getType() == TypesServiceMessages.AUTH) {
                 String message = (String) sm.getMessage();
 
-                authOk = tryToAuth(message.split(" ",2)[0], message.split(" ",2)[1]);
-                ctx.pipeline().addLast(new MainHandler());
+                authOk = DataBase.authentification(message);
+                if (authOk) {
+                    //  аутентификация пройдена - клиенту должен быть отправлен список его файлов
+                    ctx.fireChannelRead(new ServiceMessage(TypesServiceMessages.GET_FILES_LIST, null));
+                } else {
+                    // аутентификация неудачна - шлю об этом уведомление клиенту
+                    ctx.writeAndFlush(new ServiceMessage(TypesServiceMessages.AUTH, authOk));
+                }
             }
         }
-
-
-        if (input.split(" ")[0].equals("/auth")) {
-            String username = input.split(" ")[1];
-            authOk = true;
-            ctx.pipeline().addLast(new MainHandler());
-        }
-    }
-
-    private boolean tryToAuth(String login, String passwordHash) {
-
-        return true;
     }
 }
