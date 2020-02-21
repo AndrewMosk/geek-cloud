@@ -38,7 +38,7 @@ public class MainController implements Initializable {
     PasswordField passwordField;
 
     @FXML
-    VBox VBoxUpperPanel;
+    VBox VBoxAuthPanel;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -61,8 +61,9 @@ public class MainController implements Initializable {
                         if (sm.getType() == TypesServiceMessages.GET_FILES_LIST) {
                             // пришел список серверных файлов
                             // если он пришел первый раз (после успешной аутентификации), то скрываю область ввхода
-                            if (VBoxUpperPanel.isVisible()) {
-                                VBoxUpperPanel.setVisible(false);
+                            if (VBoxAuthPanel.isVisible()) {
+                                VBoxAuthPanel.setVisible(false);
+                                VBoxAuthPanel.setManaged(false);
                             }
 
                             refresh(getArrayList((String[]) sm.getMessage()));
