@@ -27,6 +27,9 @@ import java.util.stream.Collectors;
 public class MainController implements Initializable {
     final FileChooser fileChooser = new FileChooser();
     final DirectoryChooser directoryChooser = new DirectoryChooser();
+    private String closeOption;
+
+    URL url;
 
     @FXML
     TableView<ServerFile> filesListServer;
@@ -42,6 +45,8 @@ public class MainController implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        // сохраняю, чтоб можно было использовать повторно
+        url = location;
         Network.start();
 
         Thread t = new Thread(() -> {
@@ -68,6 +73,7 @@ public class MainController implements Initializable {
 
                             refresh(getArrayList((String[]) sm.getMessage()));
                         } else if (sm.getType() == TypesServiceMessages.CLOSE_CONNECTION) {
+                            closeOption = (String) sm.getMessage();
                             // клиент закрывается - сервер его об этом информирует
                             System.out.println("Client disconnected from server");
                             break;
@@ -81,12 +87,33 @@ public class MainController implements Initializable {
                 e.printStackTrace();
             } finally {
                 Network.stop();
+                if (closeOption.equals("close")) {
+                    closeStage();
+                } else {
+                    showLogPanel();
+                }
             }
         });
         t.setDaemon(true);
         t.start();
 
         createTableViewSettings();
+    }
+
+    private void showLogPanel() {
+        updateUI(() -> {
+            // обновление списка файлов с сервера
+            VBoxAuthPanel.setVisible(true);
+            VBoxAuthPanel.setManaged(true);
+            filesListServer.getItems().clear();
+        });
+    }
+
+    private void closeStage() {
+        updateUI(() -> {
+            Stage stage = MainClient.getPrimaryStage();
+            stage.close();
+        });
     }
 
     private List<ServerFile> getArrayList(String[] message) {
@@ -235,7 +262,25 @@ public class MainController implements Initializable {
         }
     }
 
-    public void tryToAuth(ActionEvent actionEvent) {
+    public void tryToAuth(ActionEvent actionEvent) throws InterruptedException {
+        if (Network.isSocketLive()) {
+            // повторный логин. открываю подключение заново
+            initialize(url, null);
+        }
+        // даю фозможность подключиться к серверу
+        Thread.sleep(1000);
         Network.sendMsg(new ServiceMessage(TypesServiceMessages.AUTH, loginField.getText() + " " + passwordField.getText().hashCode()));
+    }
+
+    public void logOut(ActionEvent actionEvent) {
+        if (!VBoxAuthPanel.isVisible()) {
+            // если панель входа видима, то смысла выпонять логаут нет
+            Network.sendMsg(new ServiceMessage(TypesServiceMessages.CLOSE_CONNECTION, "logout"));
+        }
+    }
+
+    public void closeWindow(ActionEvent actionEvent) throws InterruptedException {
+        // сюда прикрутить обработку выхода из AuthHandler!
+        Network.sendMsg(new ServiceMessage(TypesServiceMessages.CLOSE_CONNECTION, "close"));
     }
 }

@@ -12,6 +12,10 @@ public class Network {
     private static ObjectEncoderOutputStream out;
     private static ObjectDecoderInputStream in;
 
+    public static boolean isSocketLive() {
+        return socket.isClosed();
+    }
+
     public static void start() {
         try {
             socket = new Socket("localhost", 8189);

@@ -8,6 +8,12 @@
       style="-fx-background-color: linear-gradient(#fff 0%, #eee 10%, #ddd 90%, #bbb 100%);"
       xmlns="http://javafx.com/javafx/10.0.2-internal" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.geekbrains.geek.cloud.client.MainController">
+    <MenuBar>
+        <Menu mnemonicParsing="false" text="Файл">
+            <MenuItem mnemonicParsing="false" onAction="#logOut" text="Выполнить выход"/>
+            <MenuItem fx:id="close" mnemonicParsing="false" onAction="#closeWindow" text="Закрыть программу"/>
+        </Menu>
+    </MenuBar>
     <VBox fx:id="VBoxAuthPanel">
         <HBox>
             <TextField fx:id="loginField" promptText="логин..." HBox.hgrow="ALWAYS"/>

@@ -30,14 +30,15 @@ public class MainClient extends Application {
         primaryStage.setTitle("Box Client");
         Scene scene = new Scene(root);
         primaryStage.setScene(scene);
-        primaryStage.show();
 
         primaryStage.setOnCloseRequest(new EventHandler<WindowEvent>() {
             @Override
             public void handle(WindowEvent event) {
-                Network.sendMsg(new ServiceMessage(TypesServiceMessages.CLOSE_CONNECTION, null));
+                Network.sendMsg(new ServiceMessage(TypesServiceMessages.CLOSE_CONNECTION, "close"));
             }
         });
+
+        primaryStage.show();
     }
 
     public static void main(String[] args) {

@@ -25,11 +25,19 @@ class AuthHandler extends ChannelInboundHandlerAdapter {
                 authOk = DataBase.authentification(message);
                 if (authOk) {
                     //  аутентификация пройдена - клиенту должен быть отправлен список его файлов
-                    ctx.fireChannelRead(new ServiceMessage(TypesServiceMessages.GET_FILES_LIST, null));
+                    ctx.fireChannelRead(new ServiceMessage(TypesServiceMessages.GET_FILES_LIST, message.substring(0, message.indexOf(" "))));
                 } else {
                     // аутентификация неудачна - шлю об этом уведомление клиенту
                     ctx.writeAndFlush(new ServiceMessage(TypesServiceMessages.AUTH, authOk));
                 }
+            } else if (sm.getType() == TypesServiceMessages.CLOSE_CONNECTION) {
+                // клиент закрыл соединение
+                // посылаю команду клиенту на закрытие
+                ctx.writeAndFlush(new ServiceMessage(TypesServiceMessages.CLOSE_CONNECTION, (String) sm.getMessage()));
+                Thread.sleep(1000);
+                // закрываю контекст
+                ctx.close().sync();
+                System.out.println("Client disconnected");
             }
         }
     }
