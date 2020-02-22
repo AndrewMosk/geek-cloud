@@ -28,8 +28,8 @@ public class MainController implements Initializable {
     final FileChooser fileChooser = new FileChooser();
     final DirectoryChooser directoryChooser = new DirectoryChooser();
     private String closeOption;
-
-    URL url;
+    private String clientName;
+    private URL url;
 
     @FXML
     TableView<ServerFile> filesListServer;
@@ -80,6 +80,9 @@ public class MainController implements Initializable {
                         } else if (sm.getType() == TypesServiceMessages.AUTH) {
                             // если пришел такой ответ, значит аутентификация не удалась, уведомляю об этом пользователя
                             showInformationWindow("Аутентификация не удалась, попробуйте еще раз.");
+                        } else if (sm.getType() == TypesServiceMessages.CLIENTS_NAME) {
+                            clientName = (String) sm.getMessage();
+                            setNewTitle(clientName);
                         }
                     }
                 }
@@ -98,22 +101,6 @@ public class MainController implements Initializable {
         t.start();
 
         createTableViewSettings();
-    }
-
-    private void showLogPanel() {
-        updateUI(() -> {
-            // обновление списка файлов с сервера
-            VBoxAuthPanel.setVisible(true);
-            VBoxAuthPanel.setManaged(true);
-            filesListServer.getItems().clear();
-        });
-    }
-
-    private void closeStage() {
-        updateUI(() -> {
-            Stage stage = MainClient.getPrimaryStage();
-            stage.close();
-        });
     }
 
     private List<ServerFile> getArrayList(String[] message) {
@@ -194,14 +181,14 @@ public class MainController implements Initializable {
         });
     }
 
-    private TextInputDialog createDialogWindow(String defaultValue) {
-        // создание диалогового окна с запросом нового имени
-        TextInputDialog dialog = new TextInputDialog(defaultValue);
-        dialog.setTitle("Rename file");
-        dialog.setHeaderText("Enter new filename:");
-        dialog.setContentText("Name:");
+    // интерфейс
 
-        return dialog;
+    public static void updateUI(Runnable r) {
+        if (Platform.isFxApplicationThread()) {
+            r.run();
+        } else {
+            Platform.runLater(r);
+        }
     }
 
     public void refresh(List<ServerFile> serverFilesList) {
@@ -212,13 +199,61 @@ public class MainController implements Initializable {
         });
     }
 
-    public static void updateUI(Runnable r) {
-        if (Platform.isFxApplicationThread()) {
-            r.run();
-        } else {
-            Platform.runLater(r);
-        }
+    private void showLogPanel() {
+        updateUI(() -> {
+            // обновление списка файлов с сервера
+            VBoxAuthPanel.setVisible(true);
+            VBoxAuthPanel.setManaged(true);
+            filesListServer.getItems().clear();
+        });
     }
+
+    private void setNewTitle(String name){
+        updateUI(() -> {
+            Stage stage = MainClient.getPrimaryStage();
+
+            if (name.isEmpty()) {
+                stage.setTitle("Cloud storage");
+                clientName = "";
+            } else {
+                String newTitle = stage.getTitle() + " " + name;
+                clientName = name;
+                stage.setTitle(newTitle);
+            }
+        });
+    }
+
+    private void closeStage() {
+        updateUI(() -> {
+            Stage stage = MainClient.getPrimaryStage();
+            stage.close();
+        });
+    }
+
+    // вспомогательные окна
+
+    private TextInputDialog createDialogWindow(String defaultValue) {
+        // создание диалогового окна с запросом нового имени
+        TextInputDialog dialog = new TextInputDialog(defaultValue);
+        dialog.setTitle("Rename file");
+        dialog.setHeaderText("Enter new filename:");
+        dialog.setContentText("Name:");
+
+        return dialog;
+    }
+
+    private void showInformationWindow (String text) {
+        updateUI(() -> {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Information message");
+            alert.setHeaderText("Message:");
+            alert.setContentText(text);
+
+            alert.showAndWait();
+        });
+    }
+
+    // Кнопки интерфейса
 
     public void pressOnUploadBtn(ActionEvent actionEvent) {
         // получаю ссылку на основную форму
@@ -238,17 +273,6 @@ public class MainController implements Initializable {
         }
     }
 
-    private void showInformationWindow (String text) {
-        updateUI(() -> {
-            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-            alert.setTitle("Information message");
-            alert.setHeaderText("Message:");
-            alert.setContentText(text);
-
-            alert.showAndWait();
-        });
-    }
-
     public void pressOnDownloadBtn(ActionEvent actionEvent) {
         // запрос файла с сервера
         if (!filesListServer.getSelectionModel().getSelectedItems().isEmpty()) {
@@ -263,12 +287,12 @@ public class MainController implements Initializable {
     }
 
     public void tryToAuth(ActionEvent actionEvent) throws InterruptedException {
-        if (Network.isSocketLive()) {
+        if (Network.isClosed()) {
             // повторный логин. открываю подключение заново
             initialize(url, null);
+            // даю фозможность подключиться к серверу
+            Thread.sleep(1000);
         }
-        // даю фозможность подключиться к серверу
-        Thread.sleep(1000);
         Network.sendMsg(new ServiceMessage(TypesServiceMessages.AUTH, loginField.getText() + " " + passwordField.getText().hashCode()));
     }
 
@@ -276,11 +300,17 @@ public class MainController implements Initializable {
         if (!VBoxAuthPanel.isVisible()) {
             // если панель входа видима, то смысла выпонять логаут нет
             Network.sendMsg(new ServiceMessage(TypesServiceMessages.CLOSE_CONNECTION, "logout"));
+            setNewTitle("");
         }
     }
 
     public void closeWindow(ActionEvent actionEvent) throws InterruptedException {
-        // сюда прикрутить обработку выхода из AuthHandler!
-        Network.sendMsg(new ServiceMessage(TypesServiceMessages.CLOSE_CONNECTION, "close"));
+        if (Network.isClosed()) {
+            // если был выполнен логаут, то соединение закрыто и просто закрываю окно
+            closeStage();
+        } else {
+            // отправляю на сервер команду на закрытие. он закроется сам и отправит аналогичную команду клиенту
+            Network.sendMsg(new ServiceMessage(TypesServiceMessages.CLOSE_CONNECTION, "close"));
+        }
     }
 }

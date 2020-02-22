@@ -31,7 +31,7 @@ class AuthHandler extends ChannelInboundHandlerAdapter {
                     ctx.writeAndFlush(new ServiceMessage(TypesServiceMessages.AUTH, authOk));
                 }
             } else if (sm.getType() == TypesServiceMessages.CLOSE_CONNECTION) {
-                // клиент закрыл соединение
+                // пользлвтаель решил закрыть окно программы до логина
                 // посылаю команду клиенту на закрытие
                 ctx.writeAndFlush(new ServiceMessage(TypesServiceMessages.CLOSE_CONNECTION, (String) sm.getMessage()));
                 Thread.sleep(1000);

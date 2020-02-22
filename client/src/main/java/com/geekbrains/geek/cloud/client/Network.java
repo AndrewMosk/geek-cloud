@@ -12,7 +12,7 @@ public class Network {
     private static ObjectEncoderOutputStream out;
     private static ObjectDecoderInputStream in;
 
-    public static boolean isSocketLive() {
+    public static boolean isClosed() {
         return socket.isClosed();
     }
 
