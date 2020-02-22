@@ -2,29 +2,51 @@ package com.geekbrains.geek.cloud.client;
 
 import com.geekbrains.geek.cloud.common.*;
 import javafx.application.Platform;
+import javafx.collections.FXCollections;
 import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-import javafx.scene.control.ListView;
+import javafx.scene.control.*;
+import javafx.scene.input.ContextMenuEvent;
+import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.VBox;
+import javafx.stage.DirectoryChooser;
+import javafx.stage.FileChooser;
+import javafx.stage.Stage;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.Arrays;
-import java.util.ResourceBundle;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class MainController implements Initializable {
+    final FileChooser fileChooser = new FileChooser();
+    final DirectoryChooser directoryChooser = new DirectoryChooser();
+    private String closeOption;
+    private String clientName;
+    private URL url;
 
     @FXML
-    ListView<String> filesListClient;
+    TableView<ServerFile> filesListServer;
 
     @FXML
-    ListView<String> filesListServer;
+    TextField loginField;
+
+    @FXML
+    PasswordField passwordField;
+
+    @FXML
+    VBox VBoxAuthPanel;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        // сохраняю, чтоб можно было использовать повторно
+        url = location;
         Network.start();
 
         Thread t = new Thread(() -> {
@@ -34,22 +56,33 @@ public class MainController implements Initializable {
                     if (am instanceof FileMessage) {
                         // прием файла с сервера
                         FileMessage fm = (FileMessage) am;
-                        Files.write(Paths.get("client_repository/" + fm.getFilename()), fm.getData(), StandardOpenOption.CREATE);
+                        Files.write(Paths.get(fm.getDestinationPath() + "/" + fm.getFilename()), fm.getData(), StandardOpenOption.CREATE);
                         System.out.println("File " + fm.getFilename() + " received from server");
-                        refresh(null);
                     }
 
                     if (am instanceof ServiceMessage) {
-                        // прием сервисного сообщения от клиента
+                        // прием сервисного сообщения от сервера
                         ServiceMessage sm = (ServiceMessage) am;
                         if (sm.getType() == TypesServiceMessages.GET_FILES_LIST) {
                             // пришел список серверных файлов
-                            String[] serverFilesList = parseServerFilesList(sm.getMessage());
-                            refresh(serverFilesList);
+                            // если он пришел первый раз (после успешной аутентификации), то скрываю область ввхода
+                            if (VBoxAuthPanel.isVisible()) {
+                                VBoxAuthPanel.setVisible(false);
+                                VBoxAuthPanel.setManaged(false);
+                            }
+
+                            refresh(getArrayList((String[]) sm.getMessage()));
                         } else if (sm.getType() == TypesServiceMessages.CLOSE_CONNECTION) {
+                            closeOption = (String) sm.getMessage();
                             // клиент закрывается - сервер его об этом информирует
                             System.out.println("Client disconnected from server");
                             break;
+                        } else if (sm.getType() == TypesServiceMessages.AUTH) {
+                            // если пришел такой ответ, значит аутентификация не удалась, уведомляю об этом пользователя
+                            showInformationWindow("Аутентификация не удалась, попробуйте еще раз.");
+                        } else if (sm.getType() == TypesServiceMessages.CLIENTS_NAME) {
+                            clientName = (String) sm.getMessage();
+                            setNewTitle(clientName);
                         }
                     }
                 }
@@ -57,35 +90,98 @@ public class MainController implements Initializable {
                 e.printStackTrace();
             } finally {
                 Network.stop();
+                if (closeOption.equals("close")) {
+                    closeStage();
+                } else {
+                    showLogPanel();
+                }
             }
         });
         t.setDaemon(true);
         t.start();
-        refresh(null);
+
+        createTableViewSettings();
     }
 
-    private String[] parseServerFilesList(String message) {
-        // файлы приходят одной строкой, разделенные /
-        return message.split("/");
+    private List<ServerFile> getArrayList(String[] message) {
+        return Arrays.stream(message).map(ServerFile::new).collect(Collectors.toList());
     }
 
-    public void refresh(String[] serverFilesList) {
-        updateUI(() -> {
-            try {
-                // обновление списка файлов клиента
-                filesListClient.getItems().clear();
-                Files.list(Paths.get("client_repository")).map(p -> p.getFileName().toString()).forEach(o -> filesListClient.getItems().add(o));
-            } catch (IOException e) {
-                e.printStackTrace();
+    private void createTableViewSettings() {
+        // создание контекстного меню
+        ContextMenu contextMenu = new ContextMenu();
+
+        MenuItem rename = new MenuItem("Rename");
+        rename.setOnAction(new EventHandler<ActionEvent>() {
+
+            @Override
+            public void handle(ActionEvent event) {
+                // переимновывать разрешаю файлы только по одному :-)
+                if (filesListServer.getSelectionModel().getSelectedItems().size() == 1) {
+                    // создаю здесь, чтоб задать дефолтное значение
+                    TextInputDialog dialog = createDialogWindow(filesListServer.getFocusModel().getFocusedItem().getName());
+                    // открываю диалоговое окно
+                    Optional<String> result = dialog.showAndWait();
+                    result.ifPresent(name -> Network.sendMsg(new ServiceMessage(TypesServiceMessages.RENAME_FILE, filesListServer.getFocusModel().getFocusedItem().getName() + " " + name)));
+                } else {
+                    if (contextMenu.isShowing()) {
+                        contextMenu.hide();
+                    }
+                }
             }
+        });
+        MenuItem delete = new MenuItem("Delete");
+        delete.setOnAction(new EventHandler<ActionEvent>() {
 
-            // обновление списка файлов с сервера
-            if (serverFilesList != null) {
-                filesListServer.getItems().clear();
-                Arrays.stream(serverFilesList).forEach(o -> filesListServer.getItems().add(o));
+            @Override
+            public void handle(ActionEvent event) {
+                Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+                alert.setTitle("Delete File");
+                alert.setHeaderText("Are you sure want to delete file(s)? Once deleted, it cannot be restored.");
+
+                Optional<ButtonType> option = alert.showAndWait();
+                if (option.get() == ButtonType.OK) {
+                    // если пользователь подтверждает удаление файла(ов) - отправляю запрос на удаление
+                    StringBuilder files = new StringBuilder();
+                    filesListServer.getSelectionModel().getSelectedItems().forEach(f -> files.append(f.getName()).append(" "));
+                    files.delete(files.length() - 1, files.length());
+                    Network.sendMsg(new ServiceMessage(TypesServiceMessages.DELETE_FILE, files.toString()));
+                }
+            }
+        });
+
+        contextMenu.getItems().addAll(rename, delete);
+        // разрешаю множественный выбор
+        filesListServer.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+
+        // задаю несколько действий на левый клик - скрываю контекстное меню и снимаю выделение, если клинули на пустое место
+        filesListServer.setOnMouseClicked(new EventHandler<MouseEvent>() {
+            @Override
+            public void handle(MouseEvent event) {
+                if (contextMenu.isShowing()) {
+                    contextMenu.hide();
+                }
+                // сбрасываю выделение, при нажатии мышью на пустое место списка
+                if (event.getTarget().toString().contains("'null'")) {
+                    filesListServer.getSelectionModel().clearSelection();
+                }
+            }
+        });
+        // вызов контекстного меню
+        filesListServer.setOnContextMenuRequested(new EventHandler<ContextMenuEvent>() {
+
+            @Override
+            public void handle(ContextMenuEvent event) {
+                if (filesListServer.getFocusModel().getFocusedItem() != null) {
+                    contextMenu.show(filesListServer, event.getScreenX(), event.getScreenY());
+                } else {
+                    contextMenu.hide();
+                }
             }
         });
     }
+
+    // интерфейс
 
     public static void updateUI(Runnable r) {
         if (Platform.isFxApplicationThread()) {
@@ -95,20 +191,126 @@ public class MainController implements Initializable {
         }
     }
 
-    public void pressOnUploadBtn(ActionEvent actionEvent) throws IOException {
-        // отправка выделенного файла из клиентского хранилища на сервер
-        String filename = filesListClient.getFocusModel().getFocusedItem();
-        if (filename != null) {
-            Network.sendMsg(new FileMessage(Paths.get("client_repository/" + filename)));
-            System.out.println("File " + filename + " sent to server");
+    public void refresh(List<ServerFile> serverFilesList) {
+        updateUI(() -> {
+            // обновление списка файлов с сервера
+            filesListServer.getItems().clear();
+            filesListServer.setItems(FXCollections.observableArrayList(serverFilesList));
+        });
+    }
+
+    private void showLogPanel() {
+        updateUI(() -> {
+            // обновление списка файлов с сервера
+            VBoxAuthPanel.setVisible(true);
+            VBoxAuthPanel.setManaged(true);
+            filesListServer.getItems().clear();
+        });
+    }
+
+    private void setNewTitle(String name){
+        updateUI(() -> {
+            Stage stage = MainClient.getPrimaryStage();
+
+            if (name.isEmpty()) {
+                stage.setTitle("Cloud storage");
+                clientName = "";
+            } else {
+                String newTitle = stage.getTitle() + " " + name;
+                clientName = name;
+                stage.setTitle(newTitle);
+            }
+        });
+    }
+
+    private void closeStage() {
+        updateUI(() -> {
+            Stage stage = MainClient.getPrimaryStage();
+            stage.close();
+        });
+    }
+
+    // вспомогательные окна
+
+    private TextInputDialog createDialogWindow(String defaultValue) {
+        // создание диалогового окна с запросом нового имени
+        TextInputDialog dialog = new TextInputDialog(defaultValue);
+        dialog.setTitle("Rename file");
+        dialog.setHeaderText("Enter new filename:");
+        dialog.setContentText("Name:");
+
+        return dialog;
+    }
+
+    private void showInformationWindow (String text) {
+        updateUI(() -> {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Information message");
+            alert.setHeaderText("Message:");
+            alert.setContentText(text);
+
+            alert.showAndWait();
+        });
+    }
+
+    // Кнопки интерфейса
+
+    public void pressOnUploadBtn(ActionEvent actionEvent) {
+        // получаю ссылку на основную форму
+        Stage primaryStage = MainClient.getPrimaryStage();
+        // открываю диалог выбора файлов
+        List<File> files = fileChooser.showOpenMultipleDialog(primaryStage);
+
+        if (files != null) {
+            files.stream().map(File::getAbsolutePath).forEach(f -> {
+                try {
+                    Network.sendMsg(new FileMessage(Paths.get(f)));
+                    System.out.println("File " + f + " sent to server");
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
         }
     }
 
     public void pressOnDownloadBtn(ActionEvent actionEvent) {
         // запрос файла с сервера
-        String filename = filesListServer.getFocusModel().getFocusedItem();
-        if (filename != null) {
-            Network.sendMsg(new FileRequest(filename));
+        if (!filesListServer.getSelectionModel().getSelectedItems().isEmpty()) {
+            Stage primaryStage = MainClient.getPrimaryStage();
+            // запрашиваю путь - куда скачать файлы
+            File directory = directoryChooser.showDialog(primaryStage);
+
+            if (directory != null) {
+                filesListServer.getSelectionModel().getSelectedItems().forEach(f -> Network.sendMsg(new FileRequest(f.getName(), directory.getPath())));
+            }
+        }
+    }
+
+    public void tryToAuth(ActionEvent actionEvent) throws InterruptedException {
+        if (Network.isClosed()) {
+            // повторный логин. открываю подключение заново
+            initialize(url, null);
+            // даю фозможность подключиться к серверу
+            Thread.sleep(1000);
+        }
+        Network.sendMsg(new ServiceMessage(TypesServiceMessages.AUTH, loginField.getText() + " " + passwordField.getText().hashCode()));
+    }
+
+    public void logOut(ActionEvent actionEvent) {
+        if (!VBoxAuthPanel.isVisible()) {
+            // если панель входа видима, то смысла выпонять логаут нет
+            Network.sendMsg(new ServiceMessage(TypesServiceMessages.CLOSE_CONNECTION, "logout"));
+            setNewTitle("");
+        }
+    }
+
+    public void closeWindow(ActionEvent actionEvent) throws InterruptedException {
+        if (Network.isClosed()) {
+            // если был выполнен логаут, то соединение закрыто и просто закрываю окно
+            closeStage();
+        } else {
+            // отправляю на сервер команду на закрытие. он закроется сам и отправит аналогичную команду клиенту
+            Network.sendMsg(new ServiceMessage(TypesServiceMessages.CLOSE_CONNECTION, "close"));
         }
     }
 }
