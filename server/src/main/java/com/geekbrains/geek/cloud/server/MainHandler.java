@@ -17,6 +17,13 @@ import java.util.stream.Stream;
 
 public class MainHandler extends ChannelInboundHandlerAdapter {
     private String userRepository;
+    private Server server;
+    private String client;
+    private ChannelHandlerContext channelHandlerContext;
+
+    public MainHandler(Server server) {
+        this.server = server;
+    }
 
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
@@ -41,8 +48,9 @@ public class MainHandler extends ChannelInboundHandlerAdapter {
             Files.write(Paths.get(userRepository + fm.getFilename()), fm.getData(), StandardOpenOption.CREATE);
             System.out.println("File " + userRepository + fm.getFilename() + " received from client");
 
-            // отправление на клиент нового списка севреных файлов
-            ctx.writeAndFlush(new ServiceMessage(TypesServiceMessages.GET_FILES_LIST, getFileList()));
+            // отправка всем клиентам, выполнившим вход под текущим логином нового списка файлов
+            String[] filesList = getFileList();
+            server.getHandlers(client).forEach(h -> h.channelHandlerContext.writeAndFlush(new ServiceMessage(TypesServiceMessages.GET_FILES_LIST, filesList)));
         }
 
         if (msg instanceof ServiceMessage) {
@@ -50,6 +58,7 @@ public class MainHandler extends ChannelInboundHandlerAdapter {
             if (sm.getType() == TypesServiceMessages.CLOSE_CONNECTION) {
                 // клиент закрыл соединение
                 // посылаю команду клиенту на закрытие
+                server.removeClient(this);
                 ctx.writeAndFlush(new ServiceMessage(TypesServiceMessages.CLOSE_CONNECTION, (String) sm.getMessage()));
                 Thread.sleep(1000);
                 // закрываю контекст
@@ -63,21 +72,35 @@ public class MainHandler extends ChannelInboundHandlerAdapter {
                 boolean success = file.renameTo(Paths.get(userRepository + message.split(" ", 2)[1]).toFile());
 
                 if (success) {
-                    ctx.writeAndFlush(new ServiceMessage(TypesServiceMessages.GET_FILES_LIST, getFileList()));
+                    // отправка всем клиентам, выполнившим вход под текущим логином нового списка файлов
+                    String[] filesList = getFileList();
+                    server.getHandlers(client).forEach(h -> h.channelHandlerContext.writeAndFlush(new ServiceMessage(TypesServiceMessages.GET_FILES_LIST, filesList)));
                 }
             } else if (sm.getType() == TypesServiceMessages.DELETE_FILE) {
                 String message = (String) sm.getMessage();
                 // файлы на удаление в строке через пробел
                 String[] files = message.split(" ");
                 Arrays.stream(files).forEach(f -> Paths.get(userRepository + f).toFile().delete());
-                // новый список файлов
-                ctx.writeAndFlush(new ServiceMessage(TypesServiceMessages.GET_FILES_LIST, getFileList()));
+
+                // отправка всем клиентам, выполнившим вход под текущим логином нового списка файлов
+                String[] filesList = getFileList();
+                server.getHandlers(client).forEach(h -> h.channelHandlerContext.writeAndFlush(new ServiceMessage(TypesServiceMessages.GET_FILES_LIST, filesList)));
             } else if (sm.getType() == TypesServiceMessages.GET_FILES_LIST) {
+                // записываю контекст
+                channelHandlerContext = ctx;
+
                 // отправка клиенту списка файлов после удачной аутентификации
                 String clientName = (String) sm.getMessage();
                 userRepository = "server_repository/" + clientName + "/";
+                client = clientName;
+                
+                // отправка всем клиентам, выполнившим вход под текущим логином нового списка файлов
+                // здесь логин конкретного клиента - всем при этом список файлов обновлять не нужно
                 ctx.writeAndFlush(new ServiceMessage(TypesServiceMessages.GET_FILES_LIST, getFileList()));
                 ctx.writeAndFlush(new ServiceMessage(TypesServiceMessages.CLIENTS_NAME, clientName));
+
+                // передаю серверу логин и ссылку на хендлер
+                server.putClient(this, clientName);
             }
         }
     }
