@@ -123,7 +123,7 @@ public class MainController implements Initializable {
                     TextInputDialog dialog = createDialogWindow(filesListServer.getFocusModel().getFocusedItem().getName());
                     // открываю диалоговое окно
                     Optional<String> result = dialog.showAndWait();
-                    result.ifPresent(name -> Network.sendMsg(new ServiceMessage(TypesServiceMessages.RENAME_FILE, filesListServer.getFocusModel().getFocusedItem().getName() + " " + name)));
+                    result.ifPresent(name -> Network.sendMsg(new ServiceMessage(TypesServiceMessages.RENAME_FILE, filesListServer.getFocusModel().getFocusedItem().getName() + ">" + name)));
                 } else {
                     if (contextMenu.isShowing()) {
                         contextMenu.hide();
@@ -144,7 +144,7 @@ public class MainController implements Initializable {
                 if (option.get() == ButtonType.OK) {
                     // если пользователь подтверждает удаление файла(ов) - отправляю запрос на удаление
                     StringBuilder files = new StringBuilder();
-                    filesListServer.getSelectionModel().getSelectedItems().forEach(f -> files.append(f.getName()).append(" "));
+                    filesListServer.getSelectionModel().getSelectedItems().forEach(f -> files.append(f.getName()).append(">"));
                     files.delete(files.length() - 1, files.length());
                     Network.sendMsg(new ServiceMessage(TypesServiceMessages.DELETE_FILE, files.toString()));
                 }

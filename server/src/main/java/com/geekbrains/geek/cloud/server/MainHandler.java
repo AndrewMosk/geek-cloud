@@ -67,9 +67,9 @@ public class MainHandler extends ChannelInboundHandlerAdapter {
             } else if (sm.getType() == TypesServiceMessages.RENAME_FILE) {
                 String message = (String) sm.getMessage();
 
-                // имена приходят в строке через пробел. первое - имя файла, который нужно переименовать, второе - новое имя
-                File file = Paths.get(userRepository + message.split(" ", 2)[0]).toFile();
-                boolean success = file.renameTo(Paths.get(userRepository + message.split(" ", 2)[1]).toFile());
+                // имена приходят в строке через >. первое - имя файла, который нужно переименовать, второе - новое имя
+                File file = Paths.get(userRepository + message.split(">", 2)[0]).toFile();
+                boolean success = file.renameTo(Paths.get(userRepository + message.split(">", 2)[1]).toFile());
 
                 if (success) {
                     // отправка всем клиентам, выполнившим вход под текущим логином нового списка файлов
@@ -78,8 +78,8 @@ public class MainHandler extends ChannelInboundHandlerAdapter {
                 }
             } else if (sm.getType() == TypesServiceMessages.DELETE_FILE) {
                 String message = (String) sm.getMessage();
-                // файлы на удаление в строке через пробел
-                String[] files = message.split(" ");
+                // файлы на удаление в строке через > (символ, который не может фигурировать в имени файла)
+                String[] files = message.split(">");
                 Arrays.stream(files).forEach(f -> Paths.get(userRepository + f).toFile().delete());
 
                 // отправка всем клиентам, выполнившим вход под текущим логином нового списка файлов
