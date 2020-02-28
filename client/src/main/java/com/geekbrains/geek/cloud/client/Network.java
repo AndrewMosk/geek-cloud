@@ -13,6 +13,9 @@ public class Network {
     private static ObjectDecoderInputStream in;
 
     public static boolean isClosed() {
+        if (socket == null) {
+            return true;
+        }
         return socket.isClosed();
     }
 

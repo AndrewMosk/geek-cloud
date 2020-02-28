@@ -7,18 +7,21 @@ import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.geometry.Insets;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
 import javafx.scene.input.ContextMenuEvent;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import javafx.util.Pair;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
@@ -31,6 +34,7 @@ public class MainController implements Initializable {
     private String closeOption;
     private String clientName;
     private URL url;
+    private Dialog<Pair<String, String>> regStage;
 
     @FXML
     TableView<ServerFile> filesListServer;
@@ -64,26 +68,34 @@ public class MainController implements Initializable {
                     if (am instanceof ServiceMessage) {
                         // прием сервисного сообщения от сервера
                         ServiceMessage sm = (ServiceMessage) am;
-                        if (sm.getType() == TypesServiceMessages.GET_FILES_LIST) {
-                            // пришел список серверных файлов
-                            // если он пришел первый раз (после успешной аутентификации), то скрываю область ввхода
-                            if (VBoxAuthPanel.isVisible()) {
-                                VBoxAuthPanel.setVisible(false);
-                                VBoxAuthPanel.setManaged(false);
-                            }
+                        switch (sm.getType()) {
+                            case GET_FILES_LIST:
+                                // пришел список серверных файлов
+                                // если он пришел первый раз (после успешной аутентификации), то скрываю область ввхода
+                                if (VBoxAuthPanel.isVisible()) {
+                                    VBoxAuthPanel.setVisible(false);
+                                    VBoxAuthPanel.setManaged(false);
+                                }
 
-                            refresh(getArrayList((String[]) sm.getMessage()));
-                        } else if (sm.getType() == TypesServiceMessages.CLOSE_CONNECTION) {
-                            closeOption = (String) sm.getMessage();
-                            // клиент закрывается - сервер его об этом информирует
-                            System.out.println("Client disconnected from server");
-                            break;
-                        } else if (sm.getType() == TypesServiceMessages.AUTH) {
-                            // если пришел такой ответ, значит аутентификация не удалась, уведомляю об этом пользователя
-                            showInformationWindow("Аутентификация не удалась, попробуйте еще раз.");
-                        } else if (sm.getType() == TypesServiceMessages.CLIENTS_NAME) {
-                            clientName = (String) sm.getMessage();
-                            setNewTitle(clientName);
+                                refresh(getArrayList((String[]) sm.getMessage()));
+                                break;
+                            case CLOSE_CONNECTION:
+                                closeOption = (String) sm.getMessage();
+                                // клиент закрывается - сервер его об этом информирует
+                                System.out.println("Client disconnected from server");
+                                break;
+                            case AUTH:
+                                // если пришел такой ответ, значит аутентификация не удалась, уведомляю об этом пользователя
+                                showInformationWindow("Аутентификация не удалась, попробуйте еще раз.");
+                                break;
+                            case REG:
+                                // если пришел такой ответ, значит аутентификация не удалась, уведомляю об этом пользователя
+                                showInformationWindow("Регистрация не удалась, такой логин уже зарегистрирован.");
+                                break;
+                            case CLIENTS_NAME:
+                                clientName = (String) sm.getMessage();
+                                setNewTitle(clientName);
+                                break;
                         }
                     }
                 }
@@ -101,7 +113,9 @@ public class MainController implements Initializable {
         t.setDaemon(true);
         t.start();
 
+
         createTableViewSettings();
+
     }
 
     private List<ServerFile> getArrayList(String[] message) {
@@ -209,7 +223,7 @@ public class MainController implements Initializable {
         });
     }
 
-    private void setNewTitle(String name){
+    private void setNewTitle(String name) {
         updateUI(() -> {
             Stage stage = MainClient.getPrimaryStage();
 
@@ -243,7 +257,7 @@ public class MainController implements Initializable {
         return dialog;
     }
 
-    private void showInformationWindow (String text) {
+    private void showInformationWindow(String text) {
         updateUI(() -> {
             Alert alert = new Alert(Alert.AlertType.INFORMATION);
             alert.setTitle("Information message");
@@ -288,13 +302,17 @@ public class MainController implements Initializable {
     }
 
     public void tryToAuth(ActionEvent actionEvent) throws InterruptedException {
+        checkConnection();
+        Network.sendMsg(new ServiceMessage(TypesServiceMessages.AUTH, loginField.getText() + " " + passwordField.getText().hashCode()));
+    }
+
+    private void checkConnection() throws InterruptedException {
         if (Network.isClosed()) {
             // повторный логин. открываю подключение заново
             initialize(url, null);
             // даю фозможность подключиться к серверу
             Thread.sleep(1000);
         }
-        Network.sendMsg(new ServiceMessage(TypesServiceMessages.AUTH, loginField.getText() + " " + passwordField.getText().hashCode()));
     }
 
     public void logOut(ActionEvent actionEvent) {
@@ -312,6 +330,77 @@ public class MainController implements Initializable {
         } else {
             // отправляю на сервер команду на закрытие. он закроется сам и отправит аналогичную команду клиенту
             Network.sendMsg(new ServiceMessage(TypesServiceMessages.CLOSE_CONNECTION, "close"));
+        }
+    }
+
+    public void openRegistrationWindow(ActionEvent actionEvent) throws InterruptedException {
+        if (regStage == null) {
+            // создаю и настраиваю диалоговое окно при первом обращении
+            regStage = new Dialog<>();
+            Stage stage = (Stage) regStage.getDialogPane().getScene().getWindow();
+            stage.getIcons().add(new Image("file:client/images/reg.jpg"));
+            regStage.setTitle("Регистрация");
+
+            ButtonType loginButtonType = new ButtonType("OK", ButtonBar.ButtonData.OK_DONE);
+            regStage.getDialogPane().getButtonTypes().addAll(loginButtonType, ButtonType.CANCEL);
+
+            GridPane gridPane = new GridPane();
+            gridPane.setHgap(10);
+            gridPane.setVgap(10);
+            gridPane.setPadding(new Insets(20, 150, 10, 10));
+
+            TextField login = new TextField();
+            login.setPromptText("логин...");
+            PasswordField pass = new PasswordField();
+            pass.setPromptText("пароль...");
+
+            gridPane.add(new Label("Логин:"), 0, 0);
+            gridPane.add(login, 1, 0);
+            gridPane.add(new Label("Пароль:"), 2, 0);
+            gridPane.add(pass, 3, 0);
+            regStage.getDialogPane().setContent(gridPane);
+
+            regStage.setResultConverter(dialogButton -> {
+                if (dialogButton == loginButtonType) {
+                    return new Pair<>(login.getText(), pass.getText());
+                } else {
+                    // стираю введенные данные, если пользователь прервал регистрацию
+                    login.setText("");
+                    pass.setText("");
+                }
+                return null;
+            });
+
+            // проверка регистрационных данных
+            regStage.setOnCloseRequest(new EventHandler<DialogEvent>() {
+                @Override
+                public void handle(DialogEvent event) {
+                    Pair<String, String> pair = regStage.getResult();
+                    if (pair != null) {
+                        if (pair.getKey().isEmpty() || pair.getValue().isEmpty()) {
+                            showInformationWindow("Логин и(или) пароль не могут быть пустыми");
+                            event.consume();
+                        } else if (pair.getKey().contains(" ")) {
+                            showInformationWindow("В логине пробелы недопустимы");
+                            event.consume();
+                        } else {
+                            // стираю прошлые данные регистрации
+                            login.setText("");
+                            pass.setText("");
+                        }
+                    }
+                }
+            });
+        }
+
+        Optional<Pair<String, String>> result = regStage.showAndWait();
+
+        if (result.isPresent()) {
+            Pair<String, String> loginData = result.get();
+            //System.out.println(loginData.getKey() + " " + loginData.getValue().hashCode());
+            // проверяю активно ли соединение
+            checkConnection();
+            Network.sendMsg(new ServiceMessage(TypesServiceMessages.REG, loginData.getKey() + " " + loginData.getValue().hashCode()));
         }
     }
 }
