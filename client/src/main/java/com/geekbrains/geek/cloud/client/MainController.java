@@ -68,34 +68,29 @@ public class MainController implements Initializable {
                     if (am instanceof ServiceMessage) {
                         // прием сервисного сообщения от сервера
                         ServiceMessage sm = (ServiceMessage) am;
-                        switch (sm.getType()) {
-                            case GET_FILES_LIST:
-                                // пришел список серверных файлов
-                                // если он пришел первый раз (после успешной аутентификации), то скрываю область ввхода
-                                if (VBoxAuthPanel.isVisible()) {
-                                    VBoxAuthPanel.setVisible(false);
-                                    VBoxAuthPanel.setManaged(false);
-                                }
+                        if (sm.getType() == TypesServiceMessages.GET_FILES_LIST) {
+                            // пришел список серверных файлов
+                            // если он пришел первый раз (после успешной аутентификации), то скрываю область ввхода
+                            if (VBoxAuthPanel.isVisible()) {
+                                VBoxAuthPanel.setVisible(false);
+                                VBoxAuthPanel.setManaged(false);
+                            }
 
-                                refresh(getArrayList((String[]) sm.getMessage()));
-                                break;
-                            case CLOSE_CONNECTION:
-                                closeOption = (String) sm.getMessage();
-                                // клиент закрывается - сервер его об этом информирует
-                                System.out.println("Client disconnected from server");
-                                break;
-                            case AUTH:
-                                // если пришел такой ответ, значит аутентификация не удалась, уведомляю об этом пользователя
-                                showInformationWindow("Аутентификация не удалась, попробуйте еще раз.");
-                                break;
-                            case REG:
-                                // если пришел такой ответ, значит аутентификация не удалась, уведомляю об этом пользователя
-                                showInformationWindow("Регистрация не удалась, такой логин уже зарегистрирован.");
-                                break;
-                            case CLIENTS_NAME:
-                                clientName = (String) sm.getMessage();
-                                setNewTitle(clientName);
-                                break;
+                            refresh(getArrayList((String[]) sm.getMessage()));
+                        } else if (sm.getType() == TypesServiceMessages.CLOSE_CONNECTION) {
+                            closeOption = (String) sm.getMessage();
+                            // клиент закрывается - сервер его об этом информирует
+                            System.out.println("Client disconnected from server");
+                            break;
+                        } else if (sm.getType() == TypesServiceMessages.AUTH) {
+                            // если пришел такой ответ, значит аутентификация не удалась, уведомляю об этом пользователя
+                            showInformationWindow("Аутентификация не удалась, попробуйте еще раз.");
+                        } else if (sm.getType() == TypesServiceMessages.REG) {
+                            // если пришел такой ответ, значит аутентификация не удалась, уведомляю об этом пользователя
+                            showInformationWindow("Регистрация не удалась, такой логин уже зарегистрирован.");
+                        } else if (sm.getType() == TypesServiceMessages.CLIENTS_NAME) {
+                            clientName = (String) sm.getMessage();
+                            setNewTitle(clientName);
                         }
                     }
                 }
