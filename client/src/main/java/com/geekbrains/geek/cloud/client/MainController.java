@@ -70,7 +70,7 @@ public class MainController implements Initializable {
                         ServiceMessage sm = (ServiceMessage) am;
                         if (sm.getType() == TypesServiceMessages.GET_FILES_LIST) {
                             // пришел список серверных файлов
-                            // если он пришел первый раз (после успешной аутентификации), то скрываю область ввхода
+                            // скрываю область ввхода
                             if (VBoxAuthPanel.isVisible()) {
                                 VBoxAuthPanel.setVisible(false);
                                 VBoxAuthPanel.setManaged(false);

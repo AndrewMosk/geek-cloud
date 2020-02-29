@@ -75,8 +75,7 @@ public class MainHandler extends ChannelInboundHandlerAdapter {
 
                     if (success) {
                         // отправка всем клиентам, выполнившим вход под текущим логином нового списка файлов
-                        String[] filesList = getFileList();
-                        server.getHandlers(client).forEach(h -> h.channelHandlerContext.writeAndFlush(new ServiceMessage(TypesServiceMessages.GET_FILES_LIST, filesList)));
+                        sendFileList();
                     }
                     break;
                 }
@@ -87,8 +86,8 @@ public class MainHandler extends ChannelInboundHandlerAdapter {
                     Arrays.stream(files).forEach(f -> Paths.get(userRepository + f).toFile().delete());
 
                     // отправка всем клиентам, выполнившим вход под текущим логином нового списка файлов
-                    String[] filesList = getFileList();
-                    server.getHandlers(client).forEach(h -> h.channelHandlerContext.writeAndFlush(new ServiceMessage(TypesServiceMessages.GET_FILES_LIST, filesList)));
+                    sendFileList();
+
                     break;
                 }
                 case GET_FILES_LIST:
@@ -114,6 +113,11 @@ public class MainHandler extends ChannelInboundHandlerAdapter {
                     break;
             }
         }
+    }
+
+    private void sendFileList() throws IOException {
+        String[] filesList = getFileList();
+        server.getHandlers(client).forEach(h -> h.channelHandlerContext.writeAndFlush(new ServiceMessage(TypesServiceMessages.GET_FILES_LIST, filesList)));
     }
 
     private String[] getFileList() throws IOException {
