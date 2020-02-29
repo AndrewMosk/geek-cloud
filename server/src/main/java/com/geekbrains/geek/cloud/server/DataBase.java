@@ -1,8 +1,6 @@
 package com.geekbrains.geek.cloud.server;
 
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.Date;
 
 class DataBase {
     private static Connection connection;
@@ -24,14 +22,12 @@ class DataBase {
 
         String[] authArr = authString.split(" ", 2);
 
-
         int hash = Integer.parseInt(authArr[1]);
         authOk = tryToAuth(authArr[0], hash);
 
         disconnect();
         return authOk;
     }
-
 
     static void disconnect(){
         try {
@@ -45,5 +41,32 @@ class DataBase {
         ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM Users WHERE login = '%s' AND passwordHash = '%s'", login, hash));
 
         return rs.next();
+    }
+
+    public static boolean registration(String regString) throws SQLException {
+        boolean regOk = true;
+        connect();
+
+        String[] authArr = regString.split(" ", 2);
+
+        int hash = Integer.parseInt(authArr[1]);
+        if (loginIsFree(authArr[0])) {
+            tryToReg(authArr[0], hash);
+        } else {
+            regOk = false;
+        }
+
+        disconnect();
+        return regOk;
+    }
+
+    private static boolean loginIsFree(String login) throws SQLException {
+        ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM Users WHERE login = '%s'", login));
+
+        return !rs.next();
+    }
+
+    private static void tryToReg(String login, int hash) throws SQLException {
+        stmt.execute(String.format("INSERT INTO Users VALUES ('%s', '%s')", login, hash));
     }
 }

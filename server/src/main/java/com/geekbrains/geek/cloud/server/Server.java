@@ -12,7 +12,29 @@ import io.netty.handler.codec.serialization.ClassResolvers;
 import io.netty.handler.codec.serialization.ObjectDecoder;
 import io.netty.handler.codec.serialization.ObjectEncoder;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+
 public class Server {
+    private static Map<MainHandler, String > clients;
+    private static Server server;
+
+    void putClient(MainHandler clientHandler,String  login) {
+        clients.put(clientHandler, login);
+    }
+
+    void removeClient(MainHandler clientHandler) {
+        clients.remove(clientHandler);
+    }
+
+    ArrayList<MainHandler> getHandlers(String login) {
+        ArrayList<MainHandler> handlersList = new ArrayList<>();
+        clients.forEach((k, v) -> {if (v.equals(login)) handlersList.add(k);});
+
+        return handlersList;
+    }
+
     public void run() throws Exception {
         EventLoopGroup mainGroup = new NioEventLoopGroup();
         EventLoopGroup workerGroup = new NioEventLoopGroup();
@@ -26,7 +48,7 @@ public class Server {
                                     new ObjectDecoder(50 * 1024 * 1024, ClassResolvers.cacheDisabled(null)),
                                     new ObjectEncoder(),
                                     new AuthHandler(),
-                                    new MainHandler()
+                                    new MainHandler(server)
                             );
                         }
                     })
@@ -41,6 +63,8 @@ public class Server {
     }
 
     public static void main(String[] args) throws Exception {
-        new Server().run();
+        clients = new HashMap<>();
+        server = new Server();
+        server.run();
     }
 }
