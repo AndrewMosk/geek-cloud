@@ -19,14 +19,17 @@ public class Network {
         return socket.isClosed();
     }
 
-    public static void start() {
+    public static boolean start(String server, String  port) {
         try {
-            socket = new Socket("localhost", 8189);
+            socket = new Socket(server, Integer.parseInt(port));
             System.out.println("Client connected to server");
             out = new ObjectEncoderOutputStream(socket.getOutputStream());
             in = new ObjectDecoderInputStream(socket.getInputStream(), 50 * 1024 * 1024);
+
+            return true;
         } catch (IOException e) {
             e.printStackTrace();
+            return false;
         }
     }
 
