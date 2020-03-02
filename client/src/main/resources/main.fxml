@@ -13,6 +13,9 @@
             <MenuItem mnemonicParsing="false" onAction="#logOut" text="Выполнить выход"/>
             <MenuItem mnemonicParsing="false" onAction="#closeWindow" text="Закрыть программу"/>
         </Menu>
+        <Menu mnemonicParsing="false" text="Свойства">
+            <MenuItem fx:id="netConfig" mnemonicParsing="false" onAction="#openConfigWindow" text="Настройки соединения"/>
+        </Menu>
     </MenuBar>
     <VBox fx:id="VBoxAuthPanel">
         <HBox>

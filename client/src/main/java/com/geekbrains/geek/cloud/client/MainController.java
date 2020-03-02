@@ -1,18 +1,10 @@
 package com.geekbrains.geek.cloud.client;
 
 import com.geekbrains.geek.cloud.common.*;
-import javafx.application.Platform;
-import javafx.collections.FXCollections;
 import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-import javafx.geometry.Insets;
 import javafx.scene.control.*;
-import javafx.scene.image.Image;
-import javafx.scene.input.ContextMenuEvent;
-import javafx.scene.input.MouseEvent;
-import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
@@ -35,6 +27,7 @@ public class MainController implements Initializable {
     private String clientName;
     private URL url;
     private Dialog<Pair<String, String>> regStage;
+    private Stage configStage;
 
     @FXML
     TableView<ServerFile> filesListServer;
@@ -52,63 +45,77 @@ public class MainController implements Initializable {
     public void initialize(URL location, ResourceBundle resources) {
         // сохраняю, чтоб можно было использовать повторно
         url = location;
-        Network.start();
+        try {
+            String networkConfig = readNetworkConfig();
 
-        Thread t = new Thread(() -> {
-            try {
-                while (true) {
-                    AbstractMessage am = Network.readObject();
-                    if (am instanceof FileMessage) {
-                        // прием файла с сервера
-                        FileMessage fm = (FileMessage) am;
-                        Files.write(Paths.get(fm.getDestinationPath() + "/" + fm.getFilename()), fm.getData(), StandardOpenOption.CREATE);
-                        System.out.println("File " + fm.getFilename() + " received from server");
-                    }
+            boolean networkStarted = Network.start(networkConfig.split(" ", 2)[0], networkConfig.split(" ", 2)[1]);
 
-                    if (am instanceof ServiceMessage) {
-                        // прием сервисного сообщения от сервера
-                        ServiceMessage sm = (ServiceMessage) am;
-                        if (sm.getType() == TypesServiceMessages.GET_FILES_LIST) {
-                            // пришел список серверных файлов
-                            // скрываю область ввхода
-                            if (VBoxAuthPanel.isVisible()) {
-                                VBoxAuthPanel.setVisible(false);
-                                VBoxAuthPanel.setManaged(false);
+            if (networkStarted) {
+                Thread t = new Thread(() -> {
+                    try {
+                        while (true) {
+                            AbstractMessage am = Network.readObject();
+                            if (am instanceof FileMessage) {
+                                // прием файла с сервера
+                                FileMessage fm = (FileMessage) am;
+                                Files.write(Paths.get(fm.getDestinationPath() + "/" + fm.getFilename()), fm.getData(), StandardOpenOption.CREATE);
+                                System.out.println("File " + fm.getFilename() + " received from server");
                             }
 
-                            UtilsMainController.refresh(filesListServer, getArrayList((String[]) sm.getMessage()));
-                        } else if (sm.getType() == TypesServiceMessages.CLOSE_CONNECTION) {
-                            closeOption = (String) sm.getMessage();
-                            // клиент закрывается - сервер его об этом информирует
-                            System.out.println("Client disconnected from server");
-                            break;
-                        } else if (sm.getType() == TypesServiceMessages.AUTH) {
-                            // если пришел такой ответ, значит аутентификация не удалась, уведомляю об этом пользователя
-                            UtilsMainController.showInformationWindow("Аутентификация не удалась, попробуйте еще раз.");
-                        } else if (sm.getType() == TypesServiceMessages.REG) {
-                            // если пришел такой ответ, значит аутентификация не удалась, уведомляю об этом пользователя
-                            UtilsMainController.showInformationWindow("Регистрация не удалась, такой логин уже зарегистрирован.");
-                        } else if (sm.getType() == TypesServiceMessages.CLIENTS_NAME) {
-                            clientName = (String) sm.getMessage();
-                            UtilsMainController.setNewTitle(clientName);
+                            if (am instanceof ServiceMessage) {
+                                // прием сервисного сообщения от сервера
+                                ServiceMessage sm = (ServiceMessage) am;
+                                if (sm.getType() == TypesServiceMessages.GET_FILES_LIST) {
+                                    // пришел список серверных файлов
+                                    // скрываю область ввхода
+                                    hideAuthPanel();
+                                    // обновляю список файлов
+                                    UtilsMainController.refresh(filesListServer, getArrayList((String[]) sm.getMessage()));
+                                } else if (sm.getType() == TypesServiceMessages.CLOSE_CONNECTION) {
+                                    closeOption = (String) sm.getMessage();
+                                    // клиент закрывается - сервер его об этом информирует
+                                    System.out.println("Client disconnected from server");
+                                    break;
+                                } else if (sm.getType() == TypesServiceMessages.AUTH) {
+                                    // если пришел такой ответ, значит аутентификация не удалась, уведомляю об этом пользователя
+                                    UtilsMainController.showInformationWindow("Аутентификация не удалась, попробуйте еще раз.");
+                                } else if (sm.getType() == TypesServiceMessages.REG) {
+                                    // если пришел такой ответ, значит аутентификация не удалась, уведомляю об этом пользователя
+                                    UtilsMainController.showInformationWindow("Регистрация не удалась, такой логин уже зарегистрирован.");
+                                } else if (sm.getType() == TypesServiceMessages.CLIENTS_NAME) {
+                                    clientName = (String) sm.getMessage();
+                                    UtilsMainController.setNewTitle(clientName);
+                                }
+                            }
+                        }
+                    } catch (ClassNotFoundException | IOException e) {
+                        e.printStackTrace();
+                    } finally {
+                        Network.stop();
+                        if (closeOption.equals("close")) {
+                            UtilsMainController.closeStage();
+                        } else {
+                            UtilsMainController.showLogPanel(VBoxAuthPanel, filesListServer);
                         }
                     }
-                }
-            } catch (ClassNotFoundException | IOException e) {
-                e.printStackTrace();
-            } finally {
-                Network.stop();
-                if (closeOption.equals("close")) {
-                    UtilsMainController.closeStage();
-                } else {
-                    UtilsMainController.showLogPanel(VBoxAuthPanel, filesListServer);
-                }
-            }
-        });
-        t.setDaemon(true);
-        t.start();
+                });
+                t.setDaemon(true);
+                t.start();
 
-        UtilsMainController.createTableViewSettings(filesListServer);
+                UtilsMainController.createTableViewSettings(filesListServer);
+            } else {
+                UtilsMainController.showInformationWindow("Ошибка подключения к серверу");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void hideAuthPanel() {
+        if (VBoxAuthPanel.isVisible()) {
+            VBoxAuthPanel.setVisible(false);
+            VBoxAuthPanel.setManaged(false);
+        }
     }
 
     private List<ServerFile> getArrayList(String[] message) {
@@ -174,18 +181,32 @@ public class MainController implements Initializable {
     public void openRegistrationWindow(ActionEvent actionEvent) throws InterruptedException {
         if (regStage == null) {
             regStage = UtilsMainController.createRegStage();
-
         }
 
         Optional<Pair<String, String>> result = regStage.showAndWait();
 
         if (result.isPresent()) {
             Pair<String, String> loginData = result.get();
-            //System.out.println(loginData.getKey() + " " + loginData.getValue().hashCode());
             // проверяю активно ли соединение
             checkConnection();
             Network.sendMsg(new ServiceMessage(TypesServiceMessages.REG, loginData.getKey() + " " + loginData.getValue().hashCode()));
         }
+    }
+
+    private String readNetworkConfig() throws IOException {
+        if (!Files.exists(Paths.get("client/networkSettings.txt"))) {
+            Files.createFile(Paths.get("client/networkSettings.txt"));
+            Files.write(Paths.get("client/networkSettings.txt"), "localhost 8189".getBytes());
+            return "localhost 8189";
+        }
+
+        return Files.readAllLines(Paths.get("client/networkSettings.txt")).get(0);
+    }
+
+    public void openConfigWindow(ActionEvent actionEvent) throws IOException {
+        String settings = Files.readAllLines(Paths.get("client/networkSettings.txt")).get(0);
+        configStage = UtilsMainController.createConfigStage(settings.split(" ",2)[0], settings.split(" ",2)[1]);
+        configStage.show();
     }
 
     private void checkConnection() throws InterruptedException {
@@ -196,4 +217,6 @@ public class MainController implements Initializable {
             Thread.sleep(1000);
         }
     }
+
+
 }

@@ -3,20 +3,29 @@ package com.geekbrains.geek.cloud.client;
 import com.geekbrains.geek.cloud.common.ServerFile;
 import com.geekbrains.geek.cloud.common.ServiceMessage;
 import com.geekbrains.geek.cloud.common.TypesServiceMessages;
+//import com.sun.javafx.scene.control.IntegerField;
+
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.Insets;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.input.ContextMenuEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Pair;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.List;
 import java.util.Optional;
 
@@ -186,6 +195,82 @@ class UtilsMainController {
             }
         });
         return regStage;
+    }
+
+    public static Stage createConfigStage(String s, String  p) {
+        Stage configStage = new Stage();
+        configStage.setTitle("Network configuration");
+        configStage.getIcons().add(new Image("file:images/network.jpg"));
+        configStage.initModality(Modality.WINDOW_MODAL);
+        configStage.initOwner(MainClient.getPrimaryStage());
+
+        Label labelServer = new Label("Сервер");
+        labelServer.setMinSize(150,20);
+        Label labelPort = new Label("Порт");
+        labelPort.setMinSize(150,20);
+
+        TextField serv = new TextField(s);
+        serv.setMinSize(150,20);
+        TextField port = new TextField(p);
+        port.setMinSize(150,20);
+
+        Button buttonOk = new Button ("OK");
+        buttonOk.setMinSize(150,20);
+        Button buttonCancel = new Button ("Отмена");
+        buttonCancel.setMinSize(150,20);
+
+        buttonOk.addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
+            @Override
+            public void handle(MouseEvent event) {
+                if (checkPort(port.getText())) {
+                    try {
+                        writeSettings(serv.getText(), port.getText());
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    showInformationWindow("Чтобы подключиться по новым данным, необходимо перелогониться");
+                    configStage.close();
+                } else {
+                    showInformationWindow("Порт введен не верно. Только цифры, длина 4 символа");
+                    event.consume();
+                }
+
+            }
+        });
+        buttonCancel.addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
+            @Override
+            public void handle(MouseEvent event) {
+                configStage.close();
+            }
+        });
+
+        VBox vBoxMain = new VBox();
+        HBox hBoxLabel = new HBox();
+        HBox hBoxText = new HBox();
+        HBox hBoxButtons = new HBox();
+        hBoxLabel.getChildren().addAll(labelServer,labelPort);
+        hBoxText.getChildren().addAll(serv,port);
+        hBoxButtons.getChildren().addAll(buttonOk,buttonCancel);
+        vBoxMain.getChildren().addAll(hBoxLabel,hBoxText,hBoxButtons);
+
+        vBoxMain.setPadding(new Insets(10, 10, 10, 10));
+        vBoxMain.setSpacing(7);
+        Scene configScene = new Scene(vBoxMain, 320,110);
+        configStage.setScene(configScene);
+
+        return configStage;
+    }
+
+    static boolean checkPort(String port) {
+        if (port.length() == 4) {
+            return port.matches("\\d+");
+        }else {
+            return false;
+        }
+    }
+
+    static void writeSettings(String server, String port) throws IOException {
+        Files.write(Paths.get("client/networkSettings.txt"), (server + " " + port).getBytes(), StandardOpenOption.WRITE);
     }
 
     static void showInformationWindow(String text) {
