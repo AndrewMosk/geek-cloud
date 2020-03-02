@@ -13,6 +13,8 @@ import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 public class MainHandler extends ChannelInboundHandlerAdapter {
@@ -20,25 +22,28 @@ public class MainHandler extends ChannelInboundHandlerAdapter {
     private Server server;
     private String client;
     private ChannelHandlerContext channelHandlerContext;
+    private static Logger logger;
 
-    public MainHandler(Server server) {
+    public MainHandler(Server server, Logger log) throws IOException {
         this.server = server;
+        logger = log;
     }
 
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
-        System.out.println("Client connected");
+        logger.log(Level.INFO, "MainHandler channelActive");
     }
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+        logger.log(Level.INFO, "MainHandler channelRead");
         if (msg instanceof FileRequest) {
             // отправка файла клиенту
             FileRequest fr = (FileRequest) msg;
             if (Files.exists(Paths.get(userRepository + fr.getFilename()))) {
                 FileMessage fm = new FileMessage(Paths.get(userRepository + fr.getFilename()), fr.getDestinationPath());
                 ctx.writeAndFlush(fm);
-                System.out.println("File " + userRepository + fr.getFilename() + " sent to client");
+                logger.log(Level.INFO, "MainHandler File " + userRepository + fr.getFilename() + " sent to client" + client);
             }
         }
 
@@ -46,7 +51,8 @@ public class MainHandler extends ChannelInboundHandlerAdapter {
             // прием файла от клиента
             FileMessage fm = (FileMessage) msg;
             Files.write(Paths.get(userRepository + fm.getFilename()), fm.getData(), StandardOpenOption.CREATE);
-            System.out.println("File " + userRepository + fm.getFilename() + " received from client");
+            //System.out.println("File " + userRepository + fm.getFilename() + " received from client");
+            logger.log(Level.INFO, "MainHandler File " + userRepository + fm.getFilename() + " received from client" + client);
 
             // отправка всем клиентам, выполнившим вход под текущим логином нового списка файлов
             String[] filesList = getFileList();
@@ -64,7 +70,8 @@ public class MainHandler extends ChannelInboundHandlerAdapter {
                     Thread.sleep(1000);
                     // закрываю контекст
                     ctx.close().sync();
-                    System.out.println("Client disconnected");
+                    logger.log(Level.INFO, "MainHandler client " + client + " disconnected");
+                    //System.out.println("Client disconnected");
                     break;
                 case RENAME_FILE: {
                     String message = (String) sm.getMessage();
