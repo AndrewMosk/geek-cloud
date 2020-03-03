@@ -1,5 +1,6 @@
 package com.geekbrains.geek.cloud.server;
 
+import com.geekbrains.geek.cloud.common.Log;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
@@ -15,10 +16,13 @@ import io.netty.handler.codec.serialization.ObjectEncoder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class Server {
     private static Map<MainHandler, String > clients;
     private static Server server;
+    private static Logger logger;
 
     void putClient(MainHandler clientHandler,String  login) {
         clients.put(clientHandler, login);
@@ -35,7 +39,7 @@ public class Server {
         return handlersList;
     }
 
-    public void run() throws Exception {
+    public void run(int port) throws Exception {
         EventLoopGroup mainGroup = new NioEventLoopGroup();
         EventLoopGroup workerGroup = new NioEventLoopGroup();
         try {
@@ -47,14 +51,14 @@ public class Server {
                             socketChannel.pipeline().addLast(
                                     new ObjectDecoder(50 * 1024 * 1024, ClassResolvers.cacheDisabled(null)),
                                     new ObjectEncoder(),
-                                    new AuthHandler(),
-                                    new MainHandler(server)
+                                    new AuthHandler(logger),
+                                    new MainHandler(server, logger)
                             );
                         }
                     })
                     .childOption(ChannelOption.SO_KEEPALIVE, true);
-            ChannelFuture future = b.bind(8189).sync();
-            System.out.println("Server started");
+            ChannelFuture future = b.bind(port).sync();
+            logger.log(Level.INFO, "Сервер запущен. Порт " + port);
             future.channel().closeFuture().sync();
         } finally {
             mainGroup.shutdownGracefully();
@@ -62,9 +66,14 @@ public class Server {
         }
     }
 
-    public static void main(String[] args) throws Exception {
-        clients = new HashMap<>();
-        server = new Server();
-        server.run();
+    public static void main(String[] args) {
+        try {
+            logger = Log.getLogger();
+            clients = new HashMap<>();
+            server = new Server();
+            server.run(8189);
+        } catch (Exception e) {
+            logger.log(Level.WARNING, e.getMessage());
+        }
     }
 }
