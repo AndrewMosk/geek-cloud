@@ -76,6 +76,10 @@ public class MainController implements Initializable {
                                     // клиент закрывается - сервер его об этом информирует
                                     System.out.println("Client disconnected from server");
                                     break;
+                                } else if (sm.getType() == TypesServiceMessages.ERROR) {
+                                    String error = (String)sm.getMessage();
+                                    // вывожу пользователю сообщение об ошибке
+                                    UtilsMainController.showInformationWindow(error.split("/", 2)[0]);
                                 } else if (sm.getType() == TypesServiceMessages.AUTH) {
                                     // если пришел такой ответ, значит аутентификация не удалась, уведомляю об этом пользователя
                                     UtilsMainController.showInformationWindow("Аутентификация не удалась, попробуйте еще раз.");

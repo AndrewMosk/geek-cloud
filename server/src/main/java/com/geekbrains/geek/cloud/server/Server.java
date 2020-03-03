@@ -66,10 +66,14 @@ public class Server {
         }
     }
 
-    public static void main(String[] args) throws Exception {
-        logger = Log.getLogger();
-        clients = new HashMap<>();
-        server = new Server();
-        server.run(8189);
+    public static void main(String[] args) {
+        try {
+            logger = Log.getLogger();
+            clients = new HashMap<>();
+            server = new Server();
+            server.run(8189);
+        } catch (Exception e) {
+            logger.log(Level.WARNING, e.getMessage());
+        }
     }
 }
