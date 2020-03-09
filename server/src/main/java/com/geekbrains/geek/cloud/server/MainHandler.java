@@ -32,6 +32,15 @@ public class MainHandler extends ChannelInboundHandlerAdapter {
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) {
         try {
+            if (msg instanceof Integer) { // служебная команда на выключение сервера
+                Integer integer = (Integer) msg;
+                if (integer == -1) {
+                    logger.log(Level.INFO, "terminate command");
+                    server.getMainGroup().shutdownGracefully();
+                    server.getWorkerGroup().shutdownGracefully();
+                }
+            }
+
             if (msg instanceof FileRequest) {
                 // отправка файла клиенту
                 FileRequest fr = (FileRequest) msg;
@@ -103,7 +112,7 @@ public class MainHandler extends ChannelInboundHandlerAdapter {
 
                         // сюда приходит и после логина и после регистрации. проверяю, создана ли папка пользователя, если нет - создаю
                         if (Files.notExists(Paths.get(userRepository))) {
-                            Files.createDirectory(Paths.get(userRepository));
+                            Path path = Files.createDirectory(Paths.get(userRepository));
                         }
                         client = clientName;
 

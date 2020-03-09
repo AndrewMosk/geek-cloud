@@ -77,7 +77,7 @@ public class MainController implements Initializable {
                                     System.out.println("Client disconnected from server");
                                     break;
                                 } else if (sm.getType() == TypesServiceMessages.ERROR) {
-                                    String error = (String)sm.getMessage();
+                                    String error = (String) sm.getMessage();
                                     // вывожу пользователю сообщение об ошибке
                                     UtilsMainController.showInformationWindow(error.split("/", 2)[0]);
                                 } else if (sm.getType() == TypesServiceMessages.AUTH) {
@@ -209,7 +209,7 @@ public class MainController implements Initializable {
 
     public void openConfigWindow(ActionEvent actionEvent) throws IOException {
         String settings = Files.readAllLines(Paths.get("client/networkSettings.txt")).get(0);
-        configStage = UtilsMainController.createConfigStage(settings.split(" ",2)[0], settings.split(" ",2)[1]);
+        configStage = UtilsMainController.createConfigStage(settings.split(" ", 2)[0], settings.split(" ", 2)[1]);
         configStage.show();
     }
 
@@ -223,4 +223,25 @@ public class MainController implements Initializable {
     }
 
 
+    public void openConsole(ActionEvent actionEvent) {
+        // для служебного пользования - принимает только одну команду: -1 - выключение сервера
+        TextInputDialog dialog = new TextInputDialog();
+
+        dialog.setTitle("Консоль");
+        dialog.setHeaderText("Введите команду");
+
+        Optional<String> result = dialog.showAndWait();
+
+        result.ifPresent(value -> {
+            if (value.equals("-1")) {
+                try {
+                    //Network.sendMsg(new ServiceMessage(TypesServiceMessages.CLOSE_CONNECTION, "close"));
+                    Network.getOut().writeObject(Integer.parseInt(value));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+
+    }
 }

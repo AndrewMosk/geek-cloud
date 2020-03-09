@@ -26,7 +26,12 @@ public class ServerFile {
 
     private String parseDate(String token) {
         String year = token.split("T", 2)[0];
-        String hours = token.substring(token.indexOf("T") + 1, token.indexOf("."));
+        String hours;
+        if (token.contains(".")) {
+            hours = token.substring(token.indexOf("T") + 1, token.indexOf("."));
+        } else {
+            hours = token.substring(token.indexOf("T") + 1, token.indexOf("Z"));
+        }
 
         return year + " " + hours;
     }

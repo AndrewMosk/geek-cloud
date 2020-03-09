@@ -15,6 +15,7 @@
         </Menu>
         <Menu mnemonicParsing="false" text="Свойства">
             <MenuItem fx:id="netConfig" mnemonicParsing="false" onAction="#openConfigWindow" text="Настройки соединения"/>
+            <MenuItem mnemonicParsing="false" onAction="#openConsole" text="Открыть консоль"/>
         </Menu>
     </MenuBar>
     <VBox fx:id="VBoxAuthPanel">
