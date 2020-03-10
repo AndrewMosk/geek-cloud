@@ -12,6 +12,10 @@ public class Network {
     private static ObjectEncoderOutputStream out;
     private static ObjectDecoderInputStream in;
 
+    public static ObjectEncoderOutputStream getOut() {
+        return out;
+    }
+
     public static boolean isClosed() {
         if (socket == null) {
             return true;

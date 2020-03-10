@@ -13,14 +13,24 @@ class AuthHandler extends ChannelInboundHandlerAdapter {
     private boolean authOk = false;
     private String client;
     private static Logger logger;
+    private Server server;
 
-    public AuthHandler(Logger log) {
+    public AuthHandler(Server serv, Logger log) {
         logger = log;
+        server = serv;
     }
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) {
         try {
+            if (msg instanceof Integer) { // служебная команда на выключение сервера
+                Integer integer = (Integer) msg;
+                if (integer == -1) {
+                    logger.log(Level.INFO, "terminate command");
+                    server.getMainGroup().shutdownGracefully();
+                    server.getWorkerGroup().shutdownGracefully();
+                }
+            }
             if (authOk) {
                 // ретранслирую в MainHandler
                 ctx.fireChannelRead(msg);
@@ -38,6 +48,7 @@ class AuthHandler extends ChannelInboundHandlerAdapter {
                             client = message.substring(0, message.indexOf(" "));
 
                             authOk = DataBase.authentification(message);
+                            logger.log(Level.INFO, "DataBase connected");
                             processingRegistrationActions(TypesServiceMessages.AUTH, ctx, message, authOk);
                             logger.log(Level.INFO, "AuthHandler authentification client " + client + " " + authOk);
                         } catch (SQLException e) {

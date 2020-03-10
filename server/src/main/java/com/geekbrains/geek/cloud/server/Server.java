@@ -24,6 +24,17 @@ public class Server {
     private static Server server;
     private static Logger logger;
 
+    private EventLoopGroup mainGroup;
+    private EventLoopGroup workerGroup;
+
+    public EventLoopGroup getMainGroup() {
+        return mainGroup;
+    }
+
+    public EventLoopGroup getWorkerGroup() {
+        return workerGroup;
+    }
+
     void putClient(MainHandler clientHandler,String  login) {
         clients.put(clientHandler, login);
     }
@@ -40,8 +51,8 @@ public class Server {
     }
 
     public void run(int port) throws Exception {
-        EventLoopGroup mainGroup = new NioEventLoopGroup();
-        EventLoopGroup workerGroup = new NioEventLoopGroup();
+        mainGroup = new NioEventLoopGroup();
+        workerGroup = new NioEventLoopGroup();
         try {
             ServerBootstrap b = new ServerBootstrap();
             b.group(mainGroup, workerGroup)
@@ -51,7 +62,7 @@ public class Server {
                             socketChannel.pipeline().addLast(
                                     new ObjectDecoder(50 * 1024 * 1024, ClassResolvers.cacheDisabled(null)),
                                     new ObjectEncoder(),
-                                    new AuthHandler(logger),
+                                    new AuthHandler(server,logger),
                                     new MainHandler(server, logger)
                             );
                         }

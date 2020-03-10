@@ -6,7 +6,7 @@ class DataBase {
     private static Connection connection;
     private static Statement stmt;
 
-    static final String DB_URL = "jdbc:postgresql://127.0.0.1:5432/users";
+    static final String DB_URL = "jdbc:postgresql://localhost:5432/users";
     static final String USER = "postgres";
     static final String PASS = "qwerty";
 
@@ -43,7 +43,7 @@ class DataBase {
     }
 
     private static boolean tryToAuth(String login, int hash) throws SQLException {
-        ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM public.\"Users\" WHERE login = '%s' AND \"passwordHash\" = '%s'", login, hash));
+        ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM users WHERE login = '%s' AND hash = '%s'", login, hash));
 
         return rs.next();
     }
@@ -66,12 +66,12 @@ class DataBase {
     }
 
     private static boolean loginIsFree(String login) throws SQLException {
-        ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM public.\"Users\" WHERE login = '%s'", login));
+        ResultSet rs = stmt.executeQuery(String.format("SELECT * FROM users WHERE login = '%s'", login));
 
         return !rs.next();
     }
 
     private static void tryToReg(String login, int hash) throws SQLException {
-        stmt.execute(String.format("INSERT INTO public.\"Users\" VALUES ('%s', '%s')", login, hash));
+        stmt.execute(String.format("INSERT INTO users VALUES ('%s', '%s')", login, hash));
     }
 }
